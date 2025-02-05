@@ -1,0 +1,14 @@
+2023-10-27 10:00:01 192.168.1.100 GET /index.html 200 1234 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36"
+2023-10-27 10:00:02 192.168.1.101 GET /about.html 200 2567 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36"
+2023-10-27 10:00:03 192.168.1.102 POST /login.php 200 123 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36"
+2023-10-27 10:00:04 192.168.1.103 GET /products?id=123 200 3456 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36"
+2023-10-27 10:00:05 192.168.1.104 GET /contact.html 200 789 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36"
+2023-10-27 10:00:06 192.168.1.105 GET /admin 403 123 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36"  # 403 Forbidden - Attempt to access admin page
+2023-10-27 10:00:07 10.0.0.100 GET /index.php?id=1' OR '1'='1 200 456 "-" "sqlmap/1.6.10#stable (http://sqlmap.org)" # SQL Injection attempt
+2023-10-27 10:00:08 192.168.1.106 GET /search?q=<script>alert('XSS')</script> 200 987 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36" # XSS attempt
+2023-10-27 10:00:09 172.16.1.100 GET /../../../../etc/passwd 404 321 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36" # Path Traversal attempt
+2023-10-27 10:00:10 192.168.1.107 GET /login.php 405 567 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36" # 405 Method Not Allowed -  Potentially trying POST on a GET endpoint or vice versa
+2023-10-27 10:00:11 192.168.1.108 POST /login.php 400 234 "-" "curl/7.80.0" # 400 Bad Request -  Potentially malformed POST data
+2023-10-27 10:00:12 192.168.1.109 GET / 500 890 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36" # 500 Internal Server Error - Server-side issue
+2023-10-27 10:00:13 192.168.1.110 GET /index.html 200 1234 "-" "Mozilla/5.0 (compatible; Baiduspider/2.0; +http://www.baidu.com/search/spider.html)" # Good bot
+2023-10-27 10:00:14 192.168.1.111 GET /robots.txt 200 456 "-" "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)" # Good bot
