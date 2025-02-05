@@ -26,9 +26,6 @@ jobs:
         env:
           NODE_ENV: production
 
-      - name: Create CNAME file
-        run: echo "nginx.aldotobing.online" > ./out/CNAME
-
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
