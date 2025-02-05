@@ -1,14 +1,42 @@
-2023-10-27 10:00:01 192.168.1.100 GET /index.html 200 1234 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36"
-2023-10-27 10:00:02 192.168.1.101 GET /about.html 200 2567 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36"
-2023-10-27 10:00:03 192.168.1.102 POST /login.php 200 123 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36"
-2023-10-27 10:00:04 192.168.1.103 GET /products?id=123 200 3456 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36"
-2023-10-27 10:00:05 192.168.1.104 GET /contact.html 200 789 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36"
-2023-10-27 10:00:06 192.168.1.105 GET /admin 403 123 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36"  # 403 Forbidden - Attempt to access admin page
-2023-10-27 10:00:07 10.0.0.100 GET /index.php?id=1' OR '1'='1 200 456 "-" "sqlmap/1.6.10#stable (http://sqlmap.org)" # SQL Injection attempt
-2023-10-27 10:00:08 192.168.1.106 GET /search?q=<script>alert('XSS')</script> 200 987 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36" # XSS attempt
-2023-10-27 10:00:09 172.16.1.100 GET /../../../../etc/passwd 404 321 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36" # Path Traversal attempt
-2023-10-27 10:00:10 192.168.1.107 GET /login.php 405 567 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36" # 405 Method Not Allowed -  Potentially trying POST on a GET endpoint or vice versa
-2023-10-27 10:00:11 192.168.1.108 POST /login.php 400 234 "-" "curl/7.80.0" # 400 Bad Request -  Potentially malformed POST data
-2023-10-27 10:00:12 192.168.1.109 GET / 500 890 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36" # 500 Internal Server Error - Server-side issue
-2023-10-27 10:00:13 192.168.1.110 GET /index.html 200 1234 "-" "Mozilla/5.0 (compatible; Baiduspider/2.0; +http://www.baidu.com/search/spider.html)" # Good bot
-2023-10-27 10:00:14 192.168.1.111 GET /robots.txt 200 456 "-" "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)" # Good bot
+127.0.0.1 - - [05/Feb/2025:10:15:32 +0000] "GET / HTTP/1.1" 200 612 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+192.168.1.1 - - [05/Feb/2025:10:15:33 +0000] "GET /admin HTTP/1.1" 403 162 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+10.0.0.1 - - [05/Feb/2025:10:15:34 +0000] "GET /wp-login.php HTTP/1.1" 404 196 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+172.16.0.1 - - [05/Feb/2025:10:15:35 +0000] "POST /login HTTP/1.1" 200 512 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+192.168.1.2 - - [05/Feb/2025:10:15:36 +0000] "GET /index.php?page=../../../../etc/passwd HTTP/1.1" 400 255 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+10.0.0.2 - - [05/Feb/2025:10:15:37 +0000] "GET /?q=<script>alert('XSS')</script> HTTP/1.1" 200 612 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+172.16.0.2 - - [05/Feb/2025:10:15:38 +0000] "GET / HTTP/1.1" 200 612 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+192.168.1.3 - - [05/Feb/2025:10:15:39 +0000] "GET /robots.txt HTTP/1.1" 200 123 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+10.0.0.3 - - [05/Feb/2025:10:15:40 +0000] "GET /?q=SELECT * FROM users HTTP/1.1" 400 255 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+172.16.0.3 - - [05/Feb/2025:10:15:41 +0000] "GET / HTTP/1.1" 200 612 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+192.168.1.4 - - [05/Feb/2025:10:15:42 +0000] "GET /admin/config.php HTTP/1.1" 403 162 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+10.0.0.4 - - [05/Feb/2025:10:15:43 +0000] "GET /?q=<img src=x onerror=alert(1)> HTTP/1.1" 200 612 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+172.16.0.4 - - [05/Feb/2025:10:15:44 +0000] "GET / HTTP/1.1" 200 612 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+192.168.1.5 - - [05/Feb/2025:10:15:45 +0000] "GET /index.php?page=../../../../etc/shadow HTTP/1.1" 400 255 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+10.0.0.5 - - [05/Feb/2025:10:15:46 +0000] "GET /?q=UNION SELECT NULL,NULL,NULL-- HTTP/1.1" 400 255 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+172.16.0.5 - - [05/Feb/2025:10:15:47 +0000] "GET / HTTP/1.1" 200 612 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+192.168.1.6 - - [05/Feb/2025:10:15:48 +0000] "GET /wp-admin HTTP/1.1" 403 162 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+10.0.0.6 - - [05/Feb/2025:10:15:49 +0000] "GET /?q=<svg/onload=alert('XSS')> HTTP/1.1" 200 612 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+172.16.0.6 - - [05/Feb/2025:10:15:50 +0000] "GET / HTTP/1.1" 200 612 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+192.168.1.7 - - [05/Feb/2025:10:15:51 +0000] "GET /index.php?page=../../../../etc/passwd HTTP/1.1" 400 255 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+10.0.0.7 - - [05/Feb/2025:10:15:52 +0000] "GET /?q=1' OR '1'='1 HTTP/1.1" 400 255 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+172.16.0.7 - - [05/Feb/2025:10:15:53 +0000] "GET / HTTP/1.1" 200 612 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+192.168.1.8 - - [05/Feb/2025:10:15:54 +0000] "GET /admin HTTP/1.1" 403 162 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+10.0.0.8 - - [05/Feb/2025:10:15:55 +0000] "GET /?q=<script>document.location='http://evil.com'</script> HTTP/1.1" 200 612 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+172.16.0.8 - - [05/Feb/2025:10:15:56 +0000] "GET / HTTP/1.1" 200 612 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+192.168.1.9 - - [05/Feb/2025:10:15:57 +0000] "GET /index.php?page=../../../../etc/shadow HTTP/1.1" 400 255 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+10.0.0.9 - - [05/Feb/2025:10:15:58 +0000] "GET /?q=1' UNION SELECT NULL,NULL,NULL-- HTTP/1.1" 400 255 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+172.16.0.9 - - [05/Feb/2025:10:15:59 +0000] "GET / HTTP/1.1" 200 612 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+192.168.1.10 - - [05/Feb/2025:10:16:00 +0000] "GET /wp-login.php HTTP/1.1" 404 196 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+10.0.0.10 - - [05/Feb/2025:10:16:01 +0000] "GET /?q=<img src=x onerror=alert('XSS')> HTTP/1.1" 200 612 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+172.16.0.10 - - [05/Feb/2025:10:16:02 +0000] "GET / HTTP/1.1" 200 612 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+192.168.1.11 - - [05/Feb/2025:10:16:03 +0000] "GET /admin/config.php HTTP/1.1" 403 162 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+10.0.0.11 - - [05/Feb/2025:10:16:04 +0000] "GET /?q=1' OR '1'='1 HTTP/1.1" 400 255 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+172.16.0.11 - - [05/Feb/2025:10:16:05 +0000] "GET / HTTP/1.1" 200 612 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+192.168.1.12 - - [05/Feb/2025:10:16:06 +0000] "GET /index.php?page=../../../../etc/passwd HTTP/1.1" 400 255 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+10.0.0.12 - - [05/Feb/2025:10:16:07 +0000] "GET /?q=<script>alert('XSS')</script> HTTP/1.1" 200 612 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+172.16.0.12 - - [05/Feb/2025:10:16:08 +0000] "GET / HTTP/1.1" 200 612 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+192.168.1.13 - - [05/Feb/2025:10:16:09 +0000] "GET /robots.txt HTTP/1.1" 200 123 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+10.0.0.13 - - [05/Feb/2025:10:16:10 +0000] "GET /?q=SELECT * FROM users HTTP/1.1" 400 255 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+172.16.0.13 - - [05/Feb/2025:10:16:11 +0000] "GET / HTTP/1.1" 200 612 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+192.168.1.14 - - [05/Feb/2025:10:16:12 +0000] "GET /admin/config.php HTTP/1.1" 403 162 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+10.0.0.14 - - [05/Feb/2025:10:16:13 +0000] "GET /?q
