@@ -18,8 +18,7 @@ export function FileUploader({ onLogParsed }: FileUploaderProps) {
       .toString()
       .replace(/\r?\n|\r/g, " ")
       .trim();
-    const nginxLogPattern =
-      /(\d+\.\d+\.\d+\.\d+)\s+-\s+-\s*\[.*\]\s*"\S+\s+\S+\s+\S+"\s*\d{3}\s+\d+\s+"-"\s*"\S+"/;
+    const nginxLogPattern = /(\d+\.\d+\.\d+\.\d+)\s+-\s+-\s+\[.*?\]\s+"(GET|POST|PUT|DELETE|HEAD|OPTIONS|PATCH)\s+.*?\s+HTTP\/\d\.\d"\s+\d{3}\s+(\d+|-)\s+"(.*?)"\s+"(.*?)"/;
     return nginxLogPattern.test(sanitizedContent);
   };
 
