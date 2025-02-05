@@ -1,6 +1,14 @@
 import { Moon, Sun } from "lucide-react";
 
-export function DarkModeToggle({ isDarkMode, toggleDarkMode }) {
+interface DarkModeToggleProps {
+  isDarkMode: boolean;
+  toggleDarkMode: () => void;
+}
+
+export function DarkModeToggle({
+  isDarkMode,
+  toggleDarkMode,
+}: DarkModeToggleProps) {
   return (
     <button
       onClick={toggleDarkMode}

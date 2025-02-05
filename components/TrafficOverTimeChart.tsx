@@ -20,7 +20,14 @@ ChartJS.register(
   Legend
 );
 
-export function TrafficOverTimeChart({ data }) {
+interface TrafficOverTimeChartProps {
+  data: Array<{
+    hour: string;
+    count: number;
+  }>;
+}
+
+export function TrafficOverTimeChart({ data }: TrafficOverTimeChartProps) {
   const chartData = {
     labels: data.map((d) => d.hour), // Assuming 'hour' is the time unit
     datasets: [

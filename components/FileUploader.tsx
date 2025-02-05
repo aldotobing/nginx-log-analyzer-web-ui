@@ -2,32 +2,42 @@ import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { Upload } from "lucide-react";
 
-export function FileUploader({ onLogParsed }) {
+interface FileUploaderProps {
+  onLogParsed: (data: any) => void;
+}
+
+export function FileUploader({ onLogParsed }: FileUploaderProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [errorMessage, setErrorMessage] = useState(null);
+  const [errorMessage, setErrorMessage] = useState("");
 
   // Updated regex to match Nginx log format based on provided example
-  const isNginxLog = (content) => {
-    const sanitizedContent = content.replace(/\r?\n|\r/g, " ").trim();
+  const isNginxLog = (content: string | ArrayBuffer | null) => {
+    if (!content) return false;
+    const sanitizedContent = content
+      .toString()
+      .replace(/\r?\n|\r/g, " ")
+      .trim();
     const nginxLogPattern =
       /(\d+\.\d+\.\d+\.\d+)\s+-\s+-\s*\[.*\]\s*"\S+\s+\S+\s+\S+"\s*\d{3}\s+\d+\s+"-"\s*"\S+"/;
     return nginxLogPattern.test(sanitizedContent);
   };
 
-  const onDrop = useCallback((acceptedFiles) => {
+  const onDrop = useCallback((acceptedFiles: any[]) => {
     const file = acceptedFiles[0];
     if (file) {
       const reader = new FileReader();
       reader.onload = (event) => {
-        const content = event.target.result;
-        if (isNginxLog(content)) {
-          setIsProcessing(true);
-          processLogFile(content);
-        } else {
-          setErrorMessage(
-            "This is not a valid Nginx log file. Please upload a valid .log or .txt file."
-          );
+        if (event.target) {
+          const content = event.target.result;
+          if (isNginxLog(content)) {
+            setIsProcessing(true);
+            processLogFile(content);
+          } else {
+            setErrorMessage(
+              "This is not a valid Nginx log file. Please upload a valid .log or .txt file."
+            );
+          }
         }
       };
       reader.readAsText(file);
@@ -41,7 +51,7 @@ export function FileUploader({ onLogParsed }) {
     },
   });
 
-  const processLogFile = (content) => {
+  const processLogFile = (content: string | ArrayBuffer | null) => {
     const worker = new Worker(
       new URL("../workers/logParser.js", import.meta.url)
     );
@@ -51,7 +61,7 @@ export function FileUploader({ onLogParsed }) {
       } else {
         onLogParsed(event.data);
         setIsProcessing(false);
-        setErrorMessage(null); // Reset error message on success
+        setErrorMessage(""); // Reset error message on success
       }
     };
     worker.postMessage(content);

@@ -7,7 +7,16 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 
-export function RecentAttacksTable({ data }) {
+interface RecentAttacksTableProps {
+  data: Array<{
+    timestamp: string;
+    ipAddress: string;
+    attackType: string;
+    requestPath: string;
+  }>;
+}
+
+export function RecentAttacksTable({ data }: RecentAttacksTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
 
   const columns = React.useMemo(

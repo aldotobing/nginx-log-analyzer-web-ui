@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { SetStateAction, useState } from "react";
 import { FileUploader } from "../components/FileUploader";
 import { Dashboard } from "../components/Dashboard";
 import { DarkModeToggle } from "../components/DarkModeToggle";
@@ -9,7 +9,7 @@ export default function Home() {
   const [logData, setLogData] = useState(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
 
-  const handleLogParsed = (data) => {
+  const handleLogParsed = (data: SetStateAction<null>) => {
     setLogData(data);
   };
 

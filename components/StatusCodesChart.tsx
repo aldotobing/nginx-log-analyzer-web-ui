@@ -18,7 +18,11 @@ ChartJS.register(
   Legend
 );
 
-export function StatusCodesChart({ data }) {
+interface StatusCodesChartProps {
+  data: Record<string, number>;
+}
+
+export function StatusCodesChart({ data }: StatusCodesChartProps) {
   const chartData = {
     labels: Object.keys(data),
     datasets: [

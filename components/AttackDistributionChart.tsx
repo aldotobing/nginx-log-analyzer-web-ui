@@ -18,7 +18,13 @@ ChartJS.register(
   Legend
 );
 
-export function AttackDistributionChart({ data }) {
+interface AttackDistributionChartProps {
+  data: { [key: string]: number };
+}
+
+export function AttackDistributionChart({
+  data,
+}: AttackDistributionChartProps) {
   const chartData = {
     labels: Object.keys(data),
     datasets: [

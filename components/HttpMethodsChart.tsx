@@ -1,11 +1,17 @@
 import React from "react";
 import { Doughnut } from "react-chartjs-2";
-import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
+import {
+  Chart as ChartJS,
+  ArcElement,
+  Tooltip,
+  Legend,
+  ChartOptions,
+} from "chart.js";
 import { Info } from "lucide-react";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
-const HTTP_METHOD_DESCRIPTIONS = {
+const HTTP_METHOD_DESCRIPTIONS: Readonly<Record<string, string>> = {
   GET: "Retrieves data from the server",
   POST: "Submits data to be processed to the server",
   PUT: "Updates existing resource on the server",
@@ -15,7 +21,9 @@ const HTTP_METHOD_DESCRIPTIONS = {
   HEAD: "Same as GET but returns only HTTP headers",
 };
 
-const HTTP_METHOD_COLORS = {
+const HTTP_METHOD_COLORS: Readonly<
+  Record<string, { base: string; hover: string }>
+> = {
   GET: { base: "#3B82F6", hover: "#2563EB" }, // Blue
   POST: { base: "#10B981", hover: "#059669" }, // Green
   PUT: { base: "#F59E0B", hover: "#D97706" }, // Yellow
@@ -25,8 +33,25 @@ const HTTP_METHOD_COLORS = {
   HEAD: { base: "#EC4899", hover: "#DB2777" }, // Pink
 };
 
-export function HttpMethodsChart({ data }: { data: Record<string, number> }) {
+interface HttpMethodsChartProps {
+  data: Record<string, number>;
+}
+
+export function HttpMethodsChart({ data }: HttpMethodsChartProps) {
   const total = Object.values(data).reduce((sum, value) => sum + value, 0);
+
+  if (total === 0) {
+    return (
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 text-center">
+        <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-200">
+          HTTP Methods Distribution
+        </h2>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+          No data available to display.
+        </p>
+      </div>
+    );
+  }
 
   // Calculate percentages and sort by value
   const methodsData = Object.entries(data)
@@ -43,10 +68,10 @@ export function HttpMethodsChart({ data }: { data: Record<string, number> }) {
       {
         data: methodsData.map((item) => item.count),
         backgroundColor: methodsData.map(
-          (item) => HTTP_METHOD_COLORS[item.method]?.base || "#6B7280"
+          (item) => HTTP_METHOD_COLORS[item.method]?.base ?? "#6B7280"
         ),
         hoverBackgroundColor: methodsData.map(
-          (item) => HTTP_METHOD_COLORS[item.method]?.hover || "#4B5563"
+          (item) => HTTP_METHOD_COLORS[item.method]?.hover ?? "#4B5563"
         ),
         borderWidth: 2,
         borderColor: "#ffffff",
@@ -54,13 +79,13 @@ export function HttpMethodsChart({ data }: { data: Record<string, number> }) {
     ],
   };
 
-  const options = {
+  const options: ChartOptions<"doughnut"> = {
     responsive: true,
     maintainAspectRatio: false,
     cutout: "60%",
     plugins: {
       legend: {
-        position: "right" as const,
+        position: "right",
         labels: {
           padding: 20,
           font: {
@@ -68,10 +93,18 @@ export function HttpMethodsChart({ data }: { data: Record<string, number> }) {
             family: "'Inter', sans-serif",
           },
           generateLabels: (chart) => {
-            const datasets = chart.data.datasets;
-            return chart.data.labels.map((label, i) => ({
-              text: `${label} (${methodsData[i].percentage}%)`,
-              fillStyle: datasets[0].backgroundColor[i],
+            const datasets = chart.data.datasets[0];
+            if (
+              !datasets.backgroundColor ||
+              !Array.isArray(datasets.backgroundColor)
+            ) {
+              return [];
+            }
+            return (chart.data.labels || []).map((label, i) => ({
+              text: `${label as string} (${methodsData[i].percentage}%)`,
+              fillStyle: Array.isArray(datasets.backgroundColor)
+                ? datasets.backgroundColor[i]
+                : "#6B7280",
               hidden: false,
               index: i,
             }));
@@ -79,17 +112,16 @@ export function HttpMethodsChart({ data }: { data: Record<string, number> }) {
         },
       },
       tooltip: {
-        enabled: true,
         callbacks: {
           label: (context) => {
-            const method = context.label;
+            const method = context.label ?? "Unknown";
             const count = context.raw as number;
             const percentage = ((count / total) * 100).toFixed(1);
             return [
               `Count: ${count.toLocaleString()}`,
               `Percentage: ${percentage}%`,
               `Description: ${
-                HTTP_METHOD_DESCRIPTIONS[method] || "Other HTTP method"
+                HTTP_METHOD_DESCRIPTIONS[method] ?? "Other HTTP method"
               }`,
             ];
           },
@@ -127,7 +159,9 @@ export function HttpMethodsChart({ data }: { data: Record<string, number> }) {
             key={method}
             className="p-4 rounded-lg"
             style={{
-              backgroundColor: `${HTTP_METHOD_COLORS[method]?.base}15`,
+              backgroundColor: `${
+                HTTP_METHOD_COLORS[method]?.base ?? "#6B7280"
+              }15`,
             }}
           >
             <div className="font-semibold text-gray-700 dark:text-gray-300">
