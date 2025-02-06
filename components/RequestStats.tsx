@@ -1,42 +1,104 @@
+import React from "react";
+import { motion } from "framer-motion";
+
+interface RequestStatsProps {
+  data: {
+    totalRequests: number;
+    uniqueIPs: number;
+    totalAttackAttempts: number;
+  };
+}
+
 export function RequestStats({
   data = { totalRequests: 0, uniqueIPs: 0, totalAttackAttempts: 0 },
-}) {
+}: RequestStatsProps) {
+  // Helper function to animate numbers smoothly
+  const Counter = ({ value }: { value: number }) => {
+    const [count, setCount] = React.useState(0);
+
+    React.useEffect(() => {
+      const duration = 1.5; // Duration in seconds
+      const interval = 10; // Interval for each update (ms)
+      const steps = (duration * 1000) / interval; // Total number of updates
+      const increment = value / steps;
+
+      let currentCount = 0;
+      const counterInterval = setInterval(() => {
+        currentCount += increment;
+        if (currentCount >= value) {
+          currentCount = value;
+          clearInterval(counterInterval);
+        }
+        setCount(Math.ceil(currentCount));
+      }, interval);
+
+      return () => clearInterval(counterInterval);
+    }, [value]);
+
+    return (
+      <motion.span
+        className="text-5xl font-bold text-gray-800 dark:text-gray-100"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5 }}
+      >
+        {count.toLocaleString()}
+      </motion.span>
+    );
+  };
+
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 transition-transform duration-300 hover:scale-105 hover:shadow-2xl">
-      <h2 className="text-2xl font-medium mb-6 text-gray-800 dark:text-gray-100">
+    <div className="bg-gradient-to-tr from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900 rounded-xl shadow-xl p-8 transition-transform duration-300 hover:scale-105 hover:shadow-2xl">
+      <motion.h2
+        className="text-3xl font-medium mb-8 text-gray-800 dark:text-gray-100 tracking-wide"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+      >
         Request Statistics
-      </h2>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
+      </motion.h2>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-10">
         {/* Total Requests */}
-        <div className="bg-blue-100 dark:bg-blue-800 p-6 rounded-xl shadow-md hover:bg-blue-200 dark:hover:bg-blue-700 transition duration-200">
+        <motion.div
+          className="bg-blue-50 dark:bg-blue-800 p-6 rounded-xl shadow-md hover:shadow-lg transition duration-300"
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
+        >
           <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
             Total Requests
           </p>
-          <p className="text-4xl font-semibold text-gray-800 dark:text-gray-100">
-            {(data?.totalRequests || 0).toLocaleString()}
-          </p>
-        </div>
+          <Counter value={data?.totalRequests || 0} />
+        </motion.div>
 
         {/* Unique IPs */}
-        <div className="bg-green-100 dark:bg-green-800 p-6 rounded-xl shadow-md hover:bg-green-200 dark:hover:bg-green-700 transition duration-200">
+        <motion.div
+          className="bg-green-50 dark:bg-green-800 p-6 rounded-xl shadow-md hover:shadow-lg transition duration-300"
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.6 }}
+        >
           <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
             Unique IPs
           </p>
-          <p className="text-4xl font-semibold text-gray-800 dark:text-gray-100">
-            {(data?.uniqueIPs || 0).toLocaleString()}
-          </p>
-        </div>
+          <Counter value={data?.uniqueIPs || 0} />
+        </motion.div>
 
         {/* Total Attack Attempts */}
-        <div className="bg-red-100 dark:bg-red-800 p-6 rounded-xl shadow-md hover:bg-red-200 dark:hover:bg-red-700 transition duration-200">
+        <motion.div
+          className="bg-red-50 dark:bg-red-800 p-6 rounded-xl shadow-md hover:shadow-lg transition duration-300"
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.7 }}
+        >
           <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
             Total Attack Attempts
           </p>
-          <p className="text-4xl font-semibold text-gray-800 dark:text-gray-100">
-            {(data?.totalAttackAttempts || 0).toLocaleString()}
-          </p>
-        </div>
+          <Counter value={data?.totalAttackAttempts || 0} />
+        </motion.div>
       </div>
     </div>
   );
 }
+
+export default RequestStats;

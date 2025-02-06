@@ -24,13 +24,13 @@ const HTTP_METHOD_DESCRIPTIONS: Readonly<Record<string, string>> = {
 const HTTP_METHOD_COLORS: Readonly<
   Record<string, { base: string; hover: string }>
 > = {
-  GET: { base: "#3B82F6", hover: "#2563EB" }, // Blue
-  POST: { base: "#10B981", hover: "#059669" }, // Green
-  PUT: { base: "#F59E0B", hover: "#D97706" }, // Yellow
-  DELETE: { base: "#EF4444", hover: "#DC2626" }, // Red
-  PATCH: { base: "#8B5CF6", hover: "#7C3AED" }, // Purple
-  OPTIONS: { base: "#6B7280", hover: "#4B5563" }, // Gray
-  HEAD: { base: "#EC4899", hover: "#DB2777" }, // Pink
+  GET: { base: "#3B82F6", hover: "#2563EB" },
+  POST: { base: "#10B981", hover: "#059669" },
+  PUT: { base: "#F59E0B", hover: "#D97706" },
+  DELETE: { base: "#EF4444", hover: "#DC2626" },
+  PATCH: { base: "#8B5CF6", hover: "#7C3AED" },
+  OPTIONS: { base: "#6B7280", hover: "#4B5563" },
+  HEAD: { base: "#EC4899", hover: "#DB2777" },
 };
 
 interface HttpMethodsChartProps {
@@ -39,10 +39,11 @@ interface HttpMethodsChartProps {
 
 export function HttpMethodsChart({ data }: HttpMethodsChartProps) {
   const total = Object.values(data).reduce((sum, value) => sum + value, 0);
+  const isDarkMode = document.documentElement.classList.contains("dark");
 
   if (total === 0) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 text-center">
+      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg p-6 text-center">
         <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-200">
           HTTP Methods Distribution
         </h2>
@@ -53,7 +54,6 @@ export function HttpMethodsChart({ data }: HttpMethodsChartProps) {
     );
   }
 
-  // Calculate percentages and sort by value
   const methodsData = Object.entries(data)
     .map(([method, count]) => ({
       method,
@@ -62,19 +62,32 @@ export function HttpMethodsChart({ data }: HttpMethodsChartProps) {
     }))
     .sort((a, b) => b.count - a.count);
 
+  const getGradient = (context: CanvasRenderingContext2D, color: string) => {
+    const gradient = context.createLinearGradient(0, 0, 0, 400);
+    gradient.addColorStop(0, color);
+    gradient.addColorStop(1, `${color}80`);
+    return gradient;
+  };
+
   const chartData = {
     labels: methodsData.map((item) => item.method),
     datasets: [
       {
         data: methodsData.map((item) => item.count),
-        backgroundColor: methodsData.map(
-          (item) => HTTP_METHOD_COLORS[item.method]?.base ?? "#6B7280"
-        ),
+        backgroundColor: methodsData.map((item, i) => {
+          const ctx = document.createElement("canvas").getContext("2d");
+          return ctx
+            ? getGradient(
+                ctx,
+                HTTP_METHOD_COLORS[item.method]?.base || "#6B7280"
+              )
+            : "#6B7280";
+        }),
         hoverBackgroundColor: methodsData.map(
           (item) => HTTP_METHOD_COLORS[item.method]?.hover ?? "#4B5563"
         ),
         borderWidth: 2,
-        borderColor: "#ffffff",
+        borderColor: isDarkMode ? "#111827" : "#ffffff",
       },
     ],
   };
@@ -83,14 +96,21 @@ export function HttpMethodsChart({ data }: HttpMethodsChartProps) {
     responsive: true,
     maintainAspectRatio: false,
     cutout: "60%",
+    animation: {
+      animateScale: true,
+      animateRotate: true,
+    },
     plugins: {
       legend: {
-        position: "right",
+        position: "bottom",
         labels: {
-          padding: 20,
+          padding: 10,
+          color: isDarkMode ? "#E5E7EB" : "#1F2937",
           font: {
-            size: 13,
+            size: 14,
             family: "'Inter', sans-serif",
+            lineHeight: 1.6,
+            weight: 600,
           },
           generateLabels: (chart) => {
             const datasets = chart.data.datasets[0];
@@ -112,6 +132,9 @@ export function HttpMethodsChart({ data }: HttpMethodsChartProps) {
         },
       },
       tooltip: {
+        bodyColor: isDarkMode ? "#E5E7EB" : "#1F2937",
+        backgroundColor: isDarkMode ? "#111827" : "rgba(255, 255, 255, 0.9)",
+        titleColor: isDarkMode ? "#F3F4F6" : "#111827",
         callbacks: {
           label: (context) => {
             const method = context.label ?? "Unknown";
@@ -131,7 +154,7 @@ export function HttpMethodsChart({ data }: HttpMethodsChartProps) {
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 transition-all duration-300 hover:shadow-xl">
+    <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg p-6 transition-all duration-300 hover:shadow-xl">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-200">
@@ -172,6 +195,28 @@ export function HttpMethodsChart({ data }: HttpMethodsChartProps) {
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="mt-8 text-sm text-gray-700 dark:text-gray-300">
+        <p>
+          <strong>Key Insights:</strong>
+        </p>
+        <ul className="list-disc pl-6 mt-2">
+          <li>
+            <strong>{methodsData[0].method}</strong> method is the most common
+            with <strong>{methodsData[0].percentage}%</strong> of the total
+            requests.
+          </li>
+          <li>
+            <strong>DELETE</strong> method is used relatively frequently, which
+            might indicate a risk and should be closely monitored.
+          </li>
+          <li>
+            Methods like <strong>OPTIONS</strong> and <strong>HEAD</strong> are
+            less frequent but still important for understanding the nature of
+            client-server communication.
+          </li>
+        </ul>
       </div>
     </div>
   );

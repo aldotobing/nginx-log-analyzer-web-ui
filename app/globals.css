@@ -25,3 +25,30 @@ body {
 }
 
 /* Add any additional global styles here */
+/* Auto-hide scrollbar */
+.scrollbar-hide::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.scrollbar-hide:hover::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+/* Custom scrollbar track */
+.scrollbar-hide::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+/* Custom scrollbar thumb */
+.scrollbar-hide::-webkit-scrollbar-thumb {
+  background: #6b7280;
+  border-radius: 10px;
+  transition: background 0.3s;
+}
+
+/* Hover effect on scrollbar */
+.scrollbar-hide::-webkit-scrollbar-thumb:hover {
+  background: #4b5563;
+}
