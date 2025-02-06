@@ -63,21 +63,21 @@ self.onmessage = (e) => {
     }
 
     const match = line.match(
-      /^(\S+) \S+ \S+ \[([^\]]+)\] "(\S+) ([^"]*) HTTP\/\d+\.\d+" (\d+) (\d+|-|-) "([^"]*)" "([^"]*)"/
+      /^(\S+) - (\S+) \[(.*?)\] "(\S+) ([^"]*) HTTP\/\d+\.\d+" (\d+) (\d+) "([^"]*)" "([^"]*)" "([^"]*)"$/
     );
     if (match) {
       const [
         ,
         ipAddress,
-        ,
-        ,
+        remoteUser,
         timestamp,
         method,
         path,
         status,
-        ,
+        bodyBytesSent,
         referer,
         userAgent,
+        xForwardedFor,
       ] = match;
 
       if (!validHttpMethods.includes(method)) {
@@ -113,6 +113,8 @@ self.onmessage = (e) => {
         recentAttacks.push({
           timestamp,
           ipAddress,
+          remoteUser,
+          xForwardedFor,
           attackType,
           requestPath: path,
         });
