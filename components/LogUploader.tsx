@@ -213,7 +213,7 @@ export function LogUploader({ onLogParsed, onFileUpload }: LogUploaderProps) {
             transition={{ duration: 0.3 }}
           >
             <div
-              className={`relative overflow-hidden rounded-xl border-2 border-gray-300 dark:border-gray-700 p-8 shadow-sm bg-white dark:bg-gray-800 transition-all duration-300`}
+              className={`relative overflow-hidden rounded-xl dark:border-gray-700 p-8 shadow-sm bg-white dark:bg-gray-800 transition-all duration-300`}
             >
               {/* Beautified URL Input and Button */}
               <div className="flex flex-col gap-6">
@@ -239,7 +239,7 @@ export function LogUploader({ onLogParsed, onFileUpload }: LogUploaderProps) {
                     <button
                       type="submit"
                       onClick={handleUrlSubmit}
-                      className="w-full rounded-full bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-3 text-sm font-medium text-white 
+                      className="w-full rounded-full bg-gradient-to-r from-blue-500 to-blue-700 px-4 py-3 text-sm font-medium text-white 
     shadow-md transition-all duration-200 hover:from-blue-700 hover:to-blue-800 focus:outline-none 
     focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-500 transform hover:scale-[1.02] active:scale-[0.98]"
                     >
