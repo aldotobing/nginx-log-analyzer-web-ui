@@ -21,22 +21,10 @@ export function RecentAttacksTable({ data }: RecentAttacksTableProps) {
 
   const columns = React.useMemo(
     () => [
-      {
-        header: "Timestamp",
-        accessorKey: "timestamp",
-      },
-      {
-        header: "IP Address",
-        accessorKey: "ipAddress",
-      },
-      {
-        header: "Attack Type",
-        accessorKey: "attackType",
-      },
-      {
-        header: "Request Path",
-        accessorKey: "requestPath",
-      },
+      { header: "Timestamp", accessorKey: "timestamp" },
+      { header: "IP Address", accessorKey: "ipAddress" },
+      { header: "Attack Type", accessorKey: "attackType" },
+      { header: "Request Path", accessorKey: "requestPath" },
     ],
     []
   );
@@ -44,66 +32,60 @@ export function RecentAttacksTable({ data }: RecentAttacksTableProps) {
   const table = useReactTable({
     data,
     columns,
-    state: {
-      sorting,
-    },
+    state: { sorting },
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
   });
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 transition-all duration-300 hover:shadow-xl w-full overflow-hidden">
-      <h2 className="text-2xl font-semibold text-blue-600 dark:text-blue-400 mb-6 text-center">
-        Recent Attacks
-      </h2>
-
-      {/* Table container inside the same card */}
-      <div className="overflow-hidden rounded-lg shadow-md border border-gray-200 dark:border-gray-700 w-full">
-        {/* Table headers */}
-        <table className="w-full table-auto text-sm">
-          <thead className="bg-gradient-to-r from-blue-100 to-blue-200 dark:bg-gradient-to-r dark:from-blue-600 dark:to-blue-700">
-            {table.getHeaderGroups().map((headerGroup) => (
-              <tr key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
+    <>
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 transition-all duration-300 hover:shadow-lg w-full overflow-x-auto">
+        <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">
+          Recent Attacks
+        </h2>
+        {/* Satu container untuk scrollable table yang stretched ke full card */}
+        <div className="relative overflow-x-auto custom-scrollbar max-h-[400px]">
+          <table className="min-w-full table-fixed border-collapse text-sm">
+            <colgroup>
+              <col className="w-1/4" />
+              <col className="w-1/4" />
+              <col className="w-1/4" />
+              <col className="w-1/4" />
+            </colgroup>
+            <thead className="sticky top-0 z-10 bg-gradient-to-r from-blue-100 to-blue-200 dark:bg-gradient-to-r dark:from-gray-600 dark:to-gray-700 shadow">
+              <tr>
+                {table.getHeaderGroups()[0].headers.map((header) => (
                   <th
                     key={header.id}
-                    className="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider border-b border-gray-300 dark:border-gray-600 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-500"
+                    className="px-4 py-4 text-left text-xs font-medium text-gray-600 dark:text-gray-300 uppercase tracking-wider border border-gray-200 dark:border-gray-600 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                     onClick={header.column.getToggleSortingHandler()}
                   >
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-1">
                       {flexRender(
                         header.column.columnDef.header,
                         header.getContext()
                       )}
-                      <span className="ml-2 text-xs text-gray-400">
-                        {header.column.getIsSorted()
-                          ? header.column.getIsSorted() === "asc"
-                            ? "🔼"
-                            : "🔽"
-                          : null}
-                      </span>
+                      {header.column.getIsSorted() && (
+                        <span className="text-xs text-gray-400">
+                          {header.column.getIsSorted() === "asc" ? "▲" : "▼"}
+                        </span>
+                      )}
                     </div>
                   </th>
                 ))}
               </tr>
-            ))}
-          </thead>
-        </table>
-
-        {/* Scrollable container for the table */}
-        <div className="max-h-[400px] overflow-y-auto scrollbar-custom">
-          <table className="w-full table-auto text-sm">
-            <tbody>
+            </thead>
+            <tbody className="bg-white dark:bg-gray-800">
               {table.getRowModel().rows.map((row) => (
                 <tr
                   key={row.id}
-                  className="hover:bg-blue-50 dark:hover:bg-blue-700 transition-colors duration-300"
+                  className="hover:bg-gray-50 dark:hover:bg-gray-700"
                 >
                   {row.getVisibleCells().map((cell) => (
                     <td
                       key={cell.id}
-                      className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-200"
+                      className="px-4 py-2 text-left border border-gray-200 dark:border-gray-600 text-gray-800 dark:text-gray-200"
                     >
                       {flexRender(
                         cell.column.columnDef.cell,
@@ -117,6 +99,40 @@ export function RecentAttacksTable({ data }: RecentAttacksTableProps) {
           </table>
         </div>
       </div>
-    </div>
+
+      {/* Custom Scrollbar Styles */}
+      <style jsx>{`
+        /* Webkit browsers */
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 8px;
+          height: 8px;
+          opacity: 0;
+          transition: opacity 0.3s ease;
+        }
+        .custom-scrollbar:hover::-webkit-scrollbar {
+          opacity: 1;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background-color: rgba(100, 100, 100, 0.5);
+          border-radius: 4px;
+          border: 2px solid transparent;
+          background-clip: content-box;
+        }
+        .custom-scrollbar:hover::-webkit-scrollbar-thumb {
+          background-color: rgba(100, 100, 100, 0.8);
+        }
+        /* Firefox */
+        .custom-scrollbar {
+          scrollbar-width: thin;
+          scrollbar-color: rgba(100, 100, 100, 0.5) transparent;
+        }
+        .custom-scrollbar:hover {
+          scrollbar-color: rgba(100, 100, 100, 0.8) transparent;
+        }
+      `}</style>
+    </>
   );
 }
