@@ -77,11 +77,14 @@ export default function Home() {
             className="bg-gray-50 dark:bg-gray-800 rounded-lg p-6 sm:p-8 border border-gray-200 dark:border-gray-700 shadow-md"
           >
             {!logData ? (
-              <div className="space-y-6">
-                <div className="text-center space-y-4">
-                  <h2 className="text-xl sm:text-2xl lg:text-3xl font-medium text-gray-900 dark:text-gray-100 font-poppins tracking-wide">
-                    Analyze Your Nginx Logs
-                  </h2>
+              <div className="space-y-5">
+                <div className="text-center">
+                  <img
+                    src="/assets/img/nginx.png"
+                    alt="Analyze Your Nginx Logs"
+                    className="w-24 sm:w-32 lg:w-40 mx-auto"
+                  />
+
                   <p className="text-sm sm:text-base lg:text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto font-roboto">
                     Upload your Nginx log file and get powerful insights into
                     your server’s traffic and performance.
