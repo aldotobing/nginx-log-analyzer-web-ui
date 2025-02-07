@@ -10,6 +10,7 @@ import {
   Legend,
   TooltipItem,
 } from "chart.js";
+import { Info } from "lucide-react";
 
 ChartJS.register(
   CategoryScale,
@@ -62,10 +63,10 @@ export function TopIpAddressesChart({ data }: TopIpAddressesChartProps) {
   if (!data || Object.keys(data).length === 0) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 md:p-6">
-        <h2 className="text-lg md:text-2xl font-semibold text-gray-800 dark:text-gray-200">
+        <h2 className="text-base md:text-xl font-semibold text-gray-800 dark:text-gray-200">
           Top IP Addresses
         </h2>
-        <p className="text-gray-600 dark:text-gray-400 mt-2">
+        <p className="text-gray-600 dark:text-gray-400 mt-1">
           No IP address data available
         </p>
       </div>
@@ -114,13 +115,9 @@ export function TopIpAddressesChart({ data }: TopIpAddressesChartProps) {
     },
     scales: {
       x: {
-        grid: {
-          display: false,
-        },
+        grid: { display: false },
         ticks: {
-          font: {
-            size: 12,
-          },
+          font: { size: 10 },
           color: "#7f8c8d",
         },
       },
@@ -130,14 +127,11 @@ export function TopIpAddressesChart({ data }: TopIpAddressesChartProps) {
           drawBorder: false,
         },
         ticks: {
-          callback: function (tickValue: string | number) {
-            return typeof tickValue === "number"
+          callback: (tickValue: string | number) =>
+            typeof tickValue === "number"
               ? tickValue.toLocaleString()
-              : tickValue;
-          },
-          font: {
-            size: 12,
-          },
+              : tickValue,
+          font: { size: 10 },
           color: "#7f8c8d",
         },
       },
@@ -146,7 +140,7 @@ export function TopIpAddressesChart({ data }: TopIpAddressesChartProps) {
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg p-4 md:p-6 transition-all duration-300 hover:shadow-xl">
-      <h2 className="text-lg md:text-2xl font-semibold text-gray-800 dark:text-gray-200">
+      <h2 className="text-base md:text-xl font-semibold text-gray-800 dark:text-gray-200">
         Top IP Addresses
       </h2>
       <div className="h-[200px] md:h-[300px] mt-4 md:mt-6">
@@ -154,7 +148,7 @@ export function TopIpAddressesChart({ data }: TopIpAddressesChartProps) {
       </div>
 
       <div className="mt-4 md:mt-5">
-        <h3 className="text-lg md:text-xl font-semibold text-gray-800 dark:text-gray-200 mb-3 md:mb-4">
+        <h3 className="text-base md:text-lg font-semibold text-gray-800 dark:text-gray-200 mb-3 md:mb-4">
           IP Address List (Top 10)
         </h3>
         <div className="flex flex-col gap-1 md:gap-2">
@@ -163,15 +157,15 @@ export function TopIpAddressesChart({ data }: TopIpAddressesChartProps) {
               key={ip}
               className="grid grid-cols-3 gap-2 md:gap-4 bg-white dark:bg-gray-800 px-2 md:px-4 py-2 rounded-lg shadow-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-300"
             >
-              <span className="text-gray-800 dark:text-gray-300 font-thin text-xs md:text-base col-span-1 truncate">
+              <span className="text-gray-800 dark:text-gray-300 font-thin text-xs md:text-sm col-span-1 truncate">
                 {ip}
               </span>
-              <span className="text-gray-600 dark:text-gray-400 text-sm md:text-base col-span-1 truncate">
+              <span className="text-gray-600 dark:text-gray-400 text-xs md:text-sm col-span-1 truncate">
                 {ipInfo[ip]
-                  ? `${ipInfo[ip]?.city}, ${ipInfo[ip]?.country}`
+                  ? `${ipInfo[ip].city}, ${ipInfo[ip].country}`
                   : "Fetching..."}
               </span>
-              <span className="text-gray-700 dark:text-gray-400 font-medium text-right text-sm md:text-base col-span-1">
+              <span className="text-gray-700 dark:text-gray-400 font-medium text-right text-xs md:text-sm col-span-1">
                 {count.toLocaleString()} reqs
               </span>
             </div>

@@ -27,11 +27,15 @@ interface AttackDistributionChartProps {
 export function AttackDistributionChart({
   data,
 }: AttackDistributionChartProps) {
+  // Check for dark mode
   const isDarkMode = document.documentElement.classList.contains("dark");
+  // Calculate total attacks
   const totalAttacks = Object.values(data).reduce((a, b) => a + b, 0);
+  // Determine the most frequent attack type
   const mostFrequentAttack = totalAttacks
     ? Object.keys(data).reduce((a, b) => (data[a] > data[b] ? a : b), "")
     : "No Data";
+  // Calculate percentage and counts for each attack type
   const attackPercentages = totalAttacks
     ? Object.entries(data).map(([key, value]) => ({
         attackType: key,
@@ -40,6 +44,7 @@ export function AttackDistributionChart({
       }))
     : [];
 
+  // Prepare chart data for the radar chart
   const chartData = {
     labels: Object.keys(data),
     datasets: [
@@ -63,6 +68,7 @@ export function AttackDistributionChart({
     ],
   };
 
+  // Chart options
   const options = {
     responsive: true,
     plugins: {
@@ -108,16 +114,20 @@ export function AttackDistributionChart({
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg p-6 transition-all duration-300 hover:shadow-xl">
-      <div className="flex items-center justify-between mb-6">
+      {/* Header with additional information */}
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6">
         <div>
           <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-200">
             Attack Distribution
           </h2>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            Analysis of {totalAttacks.toLocaleString()} detected attacks
+            This radar chart visualizes the distribution of detected attack
+            types. Out of {totalAttacks.toLocaleString()} total attacks, each
+            axis represents an attack type and its relative frequency. Hover on
+            the chart for details.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 mt-4 md:mt-0">
           <Info className="w-5 h-5 text-gray-400" />
           <span className="text-sm text-gray-500 dark:text-gray-400">
             Hover for details
@@ -125,63 +135,76 @@ export function AttackDistributionChart({
         </div>
       </div>
 
-      <div className="h-[400px] relative">
-        {totalAttacks > 0 ? (
-          <Radar data={chartData} options={options} />
-        ) : (
-          <div className="flex items-center justify-center h-full">
-            <p className="text-center text-gray-600 dark:text-gray-400">
-              No attack data available to display.
-            </p>
+      {/* Flex container to place the chart and summary cards side-by-side on larger screens */}
+      <div className="flex flex-col md:flex-row gap-6">
+        {/* Radar Chart Container */}
+        <div className="w-full md:w-2/3">
+          <div className="h-[400px] relative">
+            {totalAttacks > 0 ? (
+              <Radar data={chartData} options={options} />
+            ) : (
+              <div className="flex items-center justify-center h-full">
+                <p className="text-center text-gray-600 dark:text-gray-400">
+                  No attack data available to display.
+                </p>
+              </div>
+            )}
           </div>
-        )}
+        </div>
+
+        {/* Summary Cards Container */}
+        <div className="w-full md:w-1/3">
+          <div className="grid grid-cols-1 gap-4">
+            {attackPercentages
+              .slice(0, 3)
+              .map(({ attackType, percentage, count }) => (
+                <div
+                  key={attackType}
+                  className="p-4 rounded-lg bg-red-50 dark:bg-red-900/20"
+                >
+                  <div className="font-semibold text-gray-700 dark:text-gray-300">
+                    {attackType}
+                  </div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    {count.toLocaleString()} attacks ({percentage}%)
+                  </div>
+                </div>
+              ))}
+          </div>
+        </div>
       </div>
 
-      <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {attackPercentages
-          .slice(0, 3)
-          .map(({ attackType, percentage, count }) => (
-            <div
-              key={attackType}
-              className="p-4 rounded-lg bg-red-50 dark:bg-red-900/20"
-            >
-              <div className="font-semibold text-gray-700 dark:text-gray-300">
-                {attackType}
-              </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">
-                {count.toLocaleString()} attacks ({percentage}%)
-              </div>
-            </div>
-          ))}
-      </div>
-
+      {/* Key Insights Section */}
       {totalAttacks > 0 && (
         <div className="mt-8 text-sm text-gray-700 dark:text-gray-300">
           <p>
-            <strong>Key Insights:</strong>
+            <strong>Key Insights & Recommendations:</strong>
           </p>
           <ul className="list-disc pl-6 mt-2">
             <li>
-              <strong>{mostFrequentAttack}</strong> is the most common attack
-              type, representing{" "}
+              <strong>{mostFrequentAttack}</strong> is the most frequently
+              detected attack type, accounting for{" "}
               {
                 attackPercentages.find(
                   (a) => a.attackType === mostFrequentAttack
                 )?.percentage
               }
-              % of all attacks
+              % of total attacks. Consider enhancing your defenses against this
+              threat.
             </li>
             <li>
-              The top 3 attack types account for{" "}
+              The top 3 attack types collectively contribute to{" "}
               {attackPercentages
                 .slice(0, 3)
                 .reduce((sum, attack) => sum + parseFloat(attack.percentage), 0)
                 .toFixed(1)}
-              % of total attacks
+              % of all attacks, indicating a concentrated risk area that demands
+              targeted monitoring.
             </li>
             <li>
-              Immediate attention recommended for {mostFrequentAttack}{" "}
-              prevention due to its high frequency
+              It is advisable to review your security protocols and implement
+              specific countermeasures for high-frequency attack vectors, with a
+              special focus on <strong>{mostFrequentAttack}</strong>.
             </li>
           </ul>
         </div>
