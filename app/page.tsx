@@ -1,16 +1,16 @@
 "use client";
 
 import { SetStateAction, useState, useEffect } from "react";
-import { FileUploader } from "../components/FileUploader";
 import { Dashboard } from "../components/Dashboard";
 import { DarkModeToggle } from "../components/DarkModeToggle";
+import { LogUploader } from "../components/LogUploader";
 import { motion } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 
 export default function Home() {
   const [logData, setLogData] = useState(null);
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [, setIsLoaded] = useState(false);
   const [loading, setLoading] = useState(false); // New loading state
 
   useEffect(() => {
@@ -32,9 +32,12 @@ export default function Home() {
 
   return (
     <div
-      className={isDarkMode ? "dark overflow-x-hidden" : "overflow-x-hidden"}
+      className={
+        isDarkMode ? "dark overflow-x-hidden" : "overflow-x-hidden bg-gray-50"
+      }
     >
-      <div className="min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300">
+        {" "}
         {/* Header Section */}
         <nav className="border-b border-gray-200 dark:border-gray-800">
           <div className="max-w-full mx-auto px-4 sm:px-6 md:px-8 lg:px-12 xl:px-16 py-4">
@@ -65,14 +68,13 @@ export default function Home() {
             </div>
           </div>
         </nav>
-
         {/* Main Content */}
         <main className="max-w-full mx-auto px-4 sm:px-6 md:px-8 lg:px-12 xl:px-16 py-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.3 }}
-            className="space-y-6"
+            className="bg-gray-50 dark:bg-gray-800 rounded-lg p-6 sm:p-8 border border-gray-200 dark:border-gray-700 shadow-md"
           >
             {!logData ? (
               <div className="space-y-6">
@@ -106,7 +108,7 @@ export default function Home() {
                     transition={{ duration: 0.4, delay: 0.5 }}
                     className="bg-white dark:bg-gray-800 rounded-lg p-6 sm:p-8 border border-gray-200 dark:border-gray-700 shadow-md"
                   >
-                    <FileUploader
+                    <LogUploader
                       onLogParsed={handleLogParsed}
                       onFileUpload={handleFileUpload}
                     />
@@ -134,7 +136,6 @@ export default function Home() {
             )}
           </motion.div>
         </main>
-
         {/* Footer */}
         <footer className="border-t border-gray-200 dark:border-gray-800 mt-16">
           <div className="max-w-screen-xl mx-auto px-4 sm:px-6 md:px-8 lg:px-12 xl:px-16 py-6">
@@ -181,6 +182,7 @@ export default function Home() {
               />
             </a>
           </div>
+          <br></br>
         </footer>
       </div>
     </div>
