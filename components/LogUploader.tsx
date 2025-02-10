@@ -119,29 +119,28 @@ export function LogUploader({ onLogParsed, onFileUpload }: LogUploaderProps) {
       className="space-y-8"
     >
       {/* Enhanced Tab Navigation */}
-      <div className="flex space-x-2 rounded-xl bg-gray-50/50 p-1.5 dark:bg-gray-800/50 backdrop-blur-sm shadow-sm">
+      <div className="flex space-x-2 rounded-xl  bg-gray-50/50 p-1.5 dark:bg-gray-800/50 backdrop-blur-sm shadow-sm">
         <button
           onClick={() => setActiveTab("file")}
-          className={`flex flex-1 items-center justify-center space-x-3 rounded-lg px-4 py-3 text-sm font-medium transition-all duration-300 
-            ${
-              activeTab === "file"
-                ? "bg-white text-blue-600 shadow-md dark:bg-gray-700 dark:text-blue-400 transform-gpu scale-100"
-                : "text-gray-600 hover:bg-white/50 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-700/50 transform-gpu scale-95 hover:scale-100"
-            }`}
+          className={`flex flex-1 items-center justify-center space-x-3 rounded-lg px-4 py-3 text-sm font-medium transition-transform duration-300 transform ${
+            activeTab === "file"
+              ? "bg-white text-blue-600 shadow-md dark:bg-gray-700 dark:text-blue-400 scale-100"
+              : "bg-gray-100 text-gray-600 hover:bg-white hover:text-gray-900 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white scale-100 hover:scale-105"
+          }`}
         >
           <FileUp
             className={`h-4 w-4 ${activeTab === "file" ? "text-blue-500" : ""}`}
           />
           <span>Upload File</span>
         </button>
+
         <button
           onClick={() => setActiveTab("url")}
-          className={`flex flex-1 items-center justify-center space-x-3 rounded-lg px-4 py-3 text-sm font-medium transition-all duration-300
-            ${
-              activeTab === "url"
-                ? "bg-white text-blue-600 shadow-md dark:bg-gray-700 dark:text-blue-400 transform-gpu scale-100"
-                : "text-gray-600 hover:bg-white/50 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-700/50 transform-gpu scale-95 hover:scale-100"
-            }`}
+          className={`flex flex-1 items-center justify-center space-x-3 rounded-lg px-4 py-3 text-sm font-medium transition-transform duration-300 transform ${
+            activeTab === "url"
+              ? "bg-white text-blue-600 shadow-md dark:bg-gray-700 dark:text-blue-400 scale-100"
+              : "bg-gray-100 text-gray-600 hover:bg-white hover:text-gray-900 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-white scale-100 hover:scale-105"
+          }`}
         >
           <Globe
             className={`h-4 w-4 ${activeTab === "url" ? "text-blue-500" : ""}`}
