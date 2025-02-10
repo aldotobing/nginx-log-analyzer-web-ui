@@ -12,13 +12,13 @@ import { motion } from "framer-motion";
 
 ChartJS.register(CategoryScale, BarElement, Tooltip, Legend);
 
-interface TopReferringUrlsChartProps {
-  fetchData: () => Promise<Record<string, number>>; // Function to fetch top referrers data
+interface TopRequestedUrlsChartProps {
+  fetchData: () => Promise<Record<string, number>>; // Function to fetch top requested URLs data
 }
 
-export function TopReferringUrlsChart({
+export function TopRequestedUrlsChart({
   fetchData,
-}: TopReferringUrlsChartProps) {
+}: TopRequestedUrlsChartProps) {
   const [data, setData] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -29,7 +29,7 @@ export function TopReferringUrlsChart({
         const result = await fetchData();
         setData(result);
       } catch (err) {
-        console.error("Error fetching referring URLs data:", err);
+        console.error("Error fetching requested URLs data:", err);
         setError("Failed to fetch data.");
       } finally {
         setLoading(false);
@@ -63,12 +63,9 @@ export function TopReferringUrlsChart({
       tooltip: {
         callbacks: {
           label: (tooltipItem: TooltipItem<"bar">) => {
-            const referrer = tooltipItem.label ?? "Unknown";
+            const url = tooltipItem.label ?? "Unknown";
             const count = tooltipItem.raw as number;
-            return [
-              `Referrer: ${referrer}`,
-              `Requests: ${count.toLocaleString()}`,
-            ];
+            return [`URL: ${url}`, `Requests: ${count.toLocaleString()}`];
           },
         },
       },
@@ -98,7 +95,7 @@ export function TopReferringUrlsChart({
         variants={containerVariants}
       >
         <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-200">
-          Loading Top Referrers...
+          Loading Top Requested URLs...
         </h2>
         <p className="text-gray-600 dark:text-gray-400 mt-2">
           Please wait while we fetch the data.
@@ -131,7 +128,7 @@ export function TopReferringUrlsChart({
       variants={containerVariants}
     >
       <h2 className="text-xl sm:text-2xl font-semibold text-gray-800 dark:text-gray-200">
-        Top Referrers
+        Top Requested URLs
       </h2>
       <div className="h-[200px] sm:h-[300px] mt-4">
         <Bar data={chartData} options={options} />
@@ -139,7 +136,7 @@ export function TopReferringUrlsChart({
 
       <div className="mt-4 sm:mt-6">
         <h3 className="text-lg sm:text-xl font-semibold text-gray-800 dark:text-gray-200">
-          Referrers List (Top 10)
+          Requested URLs List (Top 10)
         </h3>
         <ul className="mt-4 space-y-2 divide-y divide-gray-300 dark:divide-gray-600">
           {sortedData.map(([url, count]) => (
@@ -161,4 +158,4 @@ export function TopReferringUrlsChart({
   );
 }
 
-export default TopReferringUrlsChart;
+export default TopRequestedUrlsChart;

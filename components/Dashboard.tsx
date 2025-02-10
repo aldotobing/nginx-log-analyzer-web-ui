@@ -8,6 +8,7 @@ import { TrafficOverTimeChart } from "./TrafficOverTimeChart";
 import { RecentAttacksTable } from "./RecentAttacksTable";
 import TopIpAddressesChart from "./TopIpAddressChart";
 import TopReferringUrlsChart from "./TopReferringUrlsChart";
+import TopRequestedUrlsChart from "./TopRequestedUrlsChart.tsx";
 
 interface LogData {
   requestStats?: any;
@@ -18,6 +19,7 @@ interface LogData {
   recentAttacks?: any[];
   topIp?: Record<string, number>;
   topReferrers?: Record<string, number>;
+  topRequestedUrls?: Record<string, number>;
   suspiciousIps?: Record<
     string,
     {
@@ -43,15 +45,16 @@ export function Dashboard({ logData = {} as LogData }) {
     recentAttacks,
     topIp,
     topReferrers,
+    topRequestedUrls,
   } = logData;
 
-  // Variants for smooth animations
+  // Variants buat animasi smooth
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.2, // Delay between each child animation
+        staggerChildren: 0.2, // Delay antar child
       },
     },
   };
@@ -97,6 +100,11 @@ export function Dashboard({ logData = {} as LogData }) {
       {/* Top IP Addresses Chart */}
       <motion.div className="md:col-span-1" variants={itemVariants}>
         <TopIpAddressesChart data={topIp || {}} />
+      </motion.div>
+
+      {/* Top Requested URLs Chart */}
+      <motion.div className="md:col-span-2" variants={itemVariants}>
+        <TopRequestedUrlsChart fetchData={async () => topRequestedUrls || {}} />
       </motion.div>
 
       {/* Top Referring URLs Chart */}

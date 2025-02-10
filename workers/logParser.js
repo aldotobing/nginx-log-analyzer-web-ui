@@ -8,6 +8,7 @@ self.onmessage = (e) => {
     uniqueIPs: new Set(),
     totalAttackAttempts: 0,
   };
+
   const httpMethods = {};
   const statusCodes = { "2xx": 0, "3xx": 0, "4xx": 0, "5xx": 0 };
   const attackDistribution = {
@@ -17,25 +18,29 @@ self.onmessage = (e) => {
     "Directory Traversal": 0,
     "Brute Force": 0,
   };
+
   const trafficOverTime = Array(24)
     .fill(0)
     .map((_, i) => ({ hour: i, count: 0 }));
   let recentAttacks = [];
 
-  // New IP tracking objects
+  // IP tracking objects
   const ipStats = {
-    requestCounts: {}, // Track requests per IP
-    attackCounts: {}, // Track attacks per IP
-    statusCodes: {}, // Track status codes per IP
-    methods: {}, // Track HTTP methods per IP
-    bandwidthUsage: {}, // Track bandwidth usage per IP
-    lastSeen: {}, // Track last seen timestamp per IP
-    userAgents: {}, // Track unique user agents per IP
-    paths: {}, // Track unique paths accessed per IP
+    requestCounts: {},
+    attackCounts: {},
+    statusCodes: {},
+    methods: {},
+    bandwidthUsage: {},
+    lastSeen: {},
+    userAgents: {},
+    paths: {},
   };
 
-  // New Referrer tracking object
-  const referrerCounts = {}; // Track referring URLs
+  // Referrer tracking (for Top Referrers)
+  const referrerCounts = {};
+
+  // Requested URL tracking (for Top Requested URLs)
+  const requestedUrlCounts = {};
 
   const attackPatterns = {
     "SQL Injection": new RegExp(
@@ -91,7 +96,7 @@ self.onmessage = (e) => {
     }
 
     const match = line.match(
-      /^(\S+) - (\S+) \[(.*?)\] "(\S+) ([^"]*) HTTP\/\d+\.\d+" (\d+) (\d+) "([^"]*)" "([^"]*)" "([^"]*)"$/
+      /^(\S+) - (\S+) \[(.*?)\] "(\S+) ([^"]*) HTTP\/\d+\.\d+" (\d+) (\d+) "([^"]*)" "([^"]*)" "([^"]*)"$/ // Adjust regex if needed
     );
     if (match) {
       const [
@@ -112,7 +117,7 @@ self.onmessage = (e) => {
         return;
       }
 
-      // Initialize and update IP stats
+      // Update IP stats
       initializeIpStats(ipAddress);
       ipStats.requestCounts[ipAddress]++;
       ipStats.bandwidthUsage[ipAddress] += parseInt(bodyBytesSent, 10);
@@ -123,20 +128,20 @@ self.onmessage = (e) => {
         (ipStats.methods[ipAddress][method] || 0) + 1;
       ipStats.statusCodes[ipAddress][status[0] + "xx"]++;
 
-      // Track referrer counts
+      // Track Referrer counts
       if (referer) {
         referrerCounts[referer] = (referrerCounts[referer] || 0) + 1;
       }
 
-      // Regular stats tracking
+      // Track Requested URL counts
+      requestedUrlCounts[path] = (requestedUrlCounts[path] || 0) + 1;
+
+      // Update general stats
       requestStats.totalRequests++;
       requestStats.uniqueIPs.add(ipAddress);
-
       httpMethods[method] = (httpMethods[method] || 0) + 1;
-
       const statusGroup = status[0] + "xx";
       statusCodes[statusGroup]++;
-
       const hour = new Date(timestamp.replace(":", " ")).getHours();
       trafficOverTime[hour].count++;
 
@@ -168,21 +173,28 @@ self.onmessage = (e) => {
     }
   });
 
-  // Process IP statistics for the dashboard
+  // Process Top IPs
   const topIp = Object.fromEntries(
     Object.entries(ipStats.requestCounts)
       .sort(([, a], [, b]) => b - a)
       .slice(0, 10)
   );
 
-  // Process Referrer statistics for the dashboard (Top 10)
+  // Process Top Referrers (Top 10)
   const topReferrers = Object.fromEntries(
     Object.entries(referrerCounts)
       .sort(([, a], [, b]) => b - a)
       .slice(0, 10)
   );
 
-  // Additional IP analysis
+  // Process Top Requested URLs (Top 10)
+  const topRequestedUrls = Object.fromEntries(
+    Object.entries(requestedUrlCounts)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 10)
+  );
+
+  // Process Suspicious IPs
   const suspiciousIps = Object.entries(ipStats.attackCounts)
     .filter(([, count]) => count > 0)
     .sort(([, a], [, b]) => b - a)
@@ -210,7 +222,8 @@ self.onmessage = (e) => {
     attackDistribution,
     trafficOverTime,
     topIp,
-    topReferrers, // Send the top referrers
+    topReferrers, // For Top Referrers chart
+    topRequestedUrls, // For Top Requested URLs chart
     suspiciousIps,
     recentAttacks,
   });
