@@ -23,12 +23,14 @@ ChartJS.register(
 
 interface TrafficOverTimeChartProps {
   data: Array<{
-    hour: string;
+    hour: number; // Changed from string to number to match the actual data structure
     count: number;
   }>;
 }
 
-export function TrafficOverTimeChart({ data }: TrafficOverTimeChartProps) {
+export default function TrafficOverTimeChart({
+  data,
+}: TrafficOverTimeChartProps) {
   const [timeFrame, setTimeFrame] = useState<"hourly" | "daily">("hourly");
   const [isMounted, setIsMounted] = useState(false);
 
@@ -42,36 +44,39 @@ export function TrafficOverTimeChart({ data }: TrafficOverTimeChartProps) {
     let total = 0;
 
     if (timeFrame === "hourly") {
+      // Format hours properly
       processedLabels = data.map((d) => {
-        if (typeof d.hour === "string") {
-          const [_, time] = d.hour.split(" ");
-          return time.slice(0, 5); // Format as HH:MM
-        }
-        return "";
+        const hour = d.hour;
+        return `${hour.toString().padStart(2, "0")}:00`;
       });
       processedData = data.map((d) => d.count);
       total = data.reduce((sum, d) => sum + d.count, 0);
     } else {
-      const dailyData = data.reduce((acc, curr) => {
-        if (typeof curr.hour === "string") {
-          const [date] = curr.hour.split(" ");
-          acc[date] = (acc[date] || 0) + curr.count;
+      // For daily view, group by 6-hour intervals
+      const intervals = 4;
+      const hoursPerInterval = 24 / intervals;
+
+      const dailyData = Array(intervals).fill(0);
+      const dailyLabels = Array(intervals).fill("");
+
+      data.forEach((d) => {
+        const intervalIndex = Math.floor(d.hour / hoursPerInterval);
+        if (intervalIndex >= 0 && intervalIndex < intervals) {
+          dailyData[intervalIndex] += d.count;
         }
-        return acc;
-      }, {} as Record<string, number>);
+      });
 
-      const sortedDays = Object.keys(dailyData).sort(
-        (a, b) => new Date(a).getTime() - new Date(b).getTime()
-      );
+      for (let i = 0; i < intervals; i++) {
+        const startHour = i * hoursPerInterval;
+        const endHour = startHour + hoursPerInterval - 1;
+        dailyLabels[i] = `${startHour.toString().padStart(2, "0")}:00-${endHour
+          .toString()
+          .padStart(2, "0")}:59`;
+      }
 
-      processedLabels = sortedDays.map((day) =>
-        new Date(day).toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-        })
-      );
-      processedData = sortedDays.map((day) => dailyData[day]);
-      total = processedData.reduce((sum, count) => sum + count, 0);
+      processedLabels = dailyLabels;
+      processedData = dailyData;
+      total = dailyData.reduce((sum, count) => sum + count, 0);
     }
 
     return {
@@ -86,7 +91,9 @@ export function TrafficOverTimeChart({ data }: TrafficOverTimeChartProps) {
       labels,
       datasets: [
         {
-          label: `Requests (${timeFrame === "hourly" ? "Hourly" : "Daily"})`,
+          label: `Requests (${
+            timeFrame === "hourly" ? "Hourly" : "6-Hour Intervals"
+          })`,
           data: dataPoints,
           borderColor: "rgb(16, 185, 129)",
           backgroundColor: isMounted
@@ -151,7 +158,6 @@ export function TrafficOverTimeChart({ data }: TrafficOverTimeChartProps) {
           backgroundColor: "#1F2937",
           titleColor: "#F3F4F6",
           bodyColor: "#F3F4F6",
-          footerColor: "#F3F4F6",
           padding: 12,
           cornerRadius: 6,
           displayColors: true,
@@ -191,17 +197,17 @@ export function TrafficOverTimeChart({ data }: TrafficOverTimeChartProps) {
           },
           ticks: {
             color: "#6B7280",
-            maxRotation: 0,
+            maxRotation: 45,
             autoSkip: true,
-            maxTicksLimit: timeFrame === "hourly" ? 12 : 8,
+            maxTicksLimit: timeFrame === "hourly" ? 24 : 4,
           },
           title: {
             display: true,
-            text: timeFrame === "hourly" ? "Time of Day (UTC)" : "Date",
+            text: timeFrame === "hourly" ? "Time (UTC)" : "Time Intervals",
             color: "#4B5563",
             font: {
               size: 14,
-              weight: 600 as const,
+              weight: 600,
             },
           },
         },
@@ -213,6 +219,7 @@ export function TrafficOverTimeChart({ data }: TrafficOverTimeChartProps) {
       interaction: {
         mode: "nearest" as const,
         axis: "x" as const,
+        intersect: false,
       },
     }),
     [totalRequests, timeFrame]
@@ -227,8 +234,8 @@ export function TrafficOverTimeChart({ data }: TrafficOverTimeChartProps) {
           </h2>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
             {timeFrame === "hourly"
-              ? "Hourly request patterns with trend analysis"
-              : "Daily aggregate metrics with historical comparison"}
+              ? "Hourly request patterns"
+              : "6-hour interval analysis"}
           </p>
         </div>
 
@@ -251,7 +258,7 @@ export function TrafficOverTimeChart({ data }: TrafficOverTimeChartProps) {
             />
           </button>
           <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Daily
+            Intervals
           </span>
         </div>
       </div>
@@ -263,7 +270,7 @@ export function TrafficOverTimeChart({ data }: TrafficOverTimeChartProps) {
       <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div className="bg-emerald-50 dark:bg-gray-700 p-4 rounded-lg">
           <dt className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
-            Peak {timeFrame === "hourly" ? "Hour" : "Day"}
+            Peak {timeFrame === "hourly" ? "Hour" : "Interval"}
           </dt>
           <dd className="mt-1 text-2xl font-semibold text-gray-900 dark:text-gray-100">
             {labels[dataPoints.indexOf(Math.max(...dataPoints))]}
@@ -279,7 +286,7 @@ export function TrafficOverTimeChart({ data }: TrafficOverTimeChartProps) {
         </div>
         <div className="bg-emerald-50 dark:bg-gray-700 p-4 rounded-lg">
           <dt className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
-            Total Sessions
+            Total Requests
           </dt>
           <dd className="mt-1 text-2xl font-semibold text-gray-900 dark:text-gray-100">
             {totalRequests.toLocaleString()}
@@ -287,10 +294,11 @@ export function TrafficOverTimeChart({ data }: TrafficOverTimeChartProps) {
         </div>
         <div className="bg-emerald-50 dark:bg-gray-700 p-4 rounded-lg">
           <dt className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
-            {timeFrame === "hourly" ? "Today's" : "Current"} Trend
+            Current Trend
           </dt>
           <dd className="mt-1 text-2xl font-semibold text-gray-900 dark:text-gray-100">
-            {dataPoints[dataPoints.length - 1] > dataPoints[0]
+            {dataPoints[dataPoints.length - 1] >
+            dataPoints[dataPoints.length - 2]
               ? "↑ Increasing"
               : "↓ Decreasing"}
           </dd>

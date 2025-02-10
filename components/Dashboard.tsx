@@ -4,7 +4,7 @@ import { RequestStats } from "./RequestStats";
 import { HttpMethodsChart } from "./HttpMethodsChart";
 import { StatusCodesChart } from "./StatusCodesChart";
 import { AttackDistributionChart } from "./AttackDistributionChart";
-import { TrafficOverTimeChart } from "./TrafficOverTimeChart";
+import TrafficOverTimeChart from "./TrafficOverTimeChart";
 import { RecentAttacksTable } from "./RecentAttacksTable";
 import TopIpAddressesChart from "./TopIpAddressChart";
 import TopReferringUrlsChart from "./TopReferringUrlsChart";

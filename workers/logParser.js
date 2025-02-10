@@ -1,70 +1,47 @@
 self.onmessage = (e) => {
-  const logContent = e.data;
-  const lines = logContent.split("\n");
-  const totalLines = lines.length;
+  const data = e.data;
+  const logContent = data.logContent || data;
+  const format = data.format || "nginx";
 
-  const requestStats = {
-    totalRequests: 0,
-    uniqueIPs: new Set(),
-    totalAttackAttempts: 0,
+  // Initialize stats
+  const stats = {
+    requestStats: {
+      totalRequests: 0,
+      uniqueIPs: new Set(),
+      totalAttackAttempts: 0,
+      parseErrors: 0,
+    },
+    httpMethods: {},
+    statusCodes: { "2xx": 0, "3xx": 0, "4xx": 0, "5xx": 0 },
+    attackDistribution: {
+      "SQL Injection": 0,
+      XSS: 0,
+      "Command Injection": 0,
+      "Directory Traversal": 0,
+      "Brute Force": 0,
+    },
+    trafficOverTime: Array(24)
+      .fill(0)
+      .map((_, i) => ({
+        hour: i,
+        count: 0,
+      })),
+    recentAttacks: [],
+    ipStats: {
+      requestCounts: {},
+      attackCounts: {},
+      statusCodes: {},
+      methods: {},
+      bandwidthUsage: {},
+      lastSeen: {},
+      userAgents: {},
+      paths: {},
+    },
+    referrerCounts: {},
+    requestedUrlCounts: {},
   };
 
-  const httpMethods = {};
-  const statusCodes = { "2xx": 0, "3xx": 0, "4xx": 0, "5xx": 0 };
-  const attackDistribution = {
-    "SQL Injection": 0,
-    XSS: 0,
-    "Command Injection": 0,
-    "Directory Traversal": 0,
-    "Brute Force": 0,
-  };
-
-  const trafficOverTime = Array(24)
-    .fill(0)
-    .map((_, i) => ({ hour: i, count: 0 }));
-  let recentAttacks = [];
-
-  // IP tracking objects
-  const ipStats = {
-    requestCounts: {},
-    attackCounts: {},
-    statusCodes: {},
-    methods: {},
-    bandwidthUsage: {},
-    lastSeen: {},
-    userAgents: {},
-    paths: {},
-  };
-
-  // Referrer tracking (for Top Referrers)
-  const referrerCounts = {};
-
-  // Requested URL tracking (for Top Requested URLs)
-  const requestedUrlCounts = {};
-
-  const attackPatterns = {
-    "SQL Injection": new RegExp(
-      "(--|;|\\bUNION\\b|\\bSELECT\\b|\\bINSERT\\b|\\bDELETE\\b|\\bUPDATE\\b|\\bDROP\\b|\\bTABLE\\b|\\bFROM\\b|\\bWHERE\\b|\\bOR\\b|\\bAND\\b|'|\"|\\bEXEC\\b|\\bCONCAT\\b|\\bINTO\\b|\\bOUTFILE\\b|\\bLOAD_FILE\\b|\\bSELECT\\b.*\\bINTO\\b|\\bLOAD_FILE\\b|%27|%2D%2D|%3B|\\bDBMS_PIPE\\b|\\bSLEEP\\b|\\bBENCHMARK\\b)",
-      "i"
-    ),
-    XSS: new RegExp(
-      "<script[^>]*>|javascript:|onerror\\s*=|onload\\s*=|eval\\(|alert\\(|document\\.cookie|document\\.location|<img[^>]+onerror|<svg[^>]+onload|<iframe|<object|<embed|document\\.write",
-      "i"
-    ),
-    "Command Injection": new RegExp(
-      "\\b(cat|ls|id|uname|whoami|pwd|rm|touch|wget|curl|scp|rsync|ftp|nc|nmap|ping|traceroute|telnet|ssh|sh|bash|zsh)\\b(\\s+|$)|\\b(sh|bash|zsh)\\b(\\s+|$)",
-      "i"
-    ),
-    "Directory Traversal": new RegExp(
-      "(\\.\\./){2,}|%2e{2,}|\\b(?:/|\\\\)(?:\\S+)?\\b(?:\\.{2,}|\\../){2,}",
-      "i"
-    ),
-    "Brute Force": new RegExp(
-      "login|signin|authenticate|password|user|checkin|auth|account|register|confirm|reset|forgot|login\\.php|login\\.aspx|signin\\.php|signin\\.aspx|auth\\.php|user_checkin_activity|reset_password",
-      "i"
-    ),
-  };
-
+  // Valid HTTP methods
   const validHttpMethods = [
     "GET",
     "POST",
@@ -77,154 +54,258 @@ self.onmessage = (e) => {
     "TRACE",
   ];
 
-  // Helper function to initialize IP stats
-  const initializeIpStats = (ip) => {
-    if (!ipStats.requestCounts[ip]) {
-      ipStats.requestCounts[ip] = 0;
-      ipStats.attackCounts[ip] = 0;
-      ipStats.statusCodes[ip] = { "2xx": 0, "3xx": 0, "4xx": 0, "5xx": 0 };
-      ipStats.methods[ip] = {};
-      ipStats.bandwidthUsage[ip] = 0;
-      ipStats.userAgents[ip] = new Set();
-      ipStats.paths[ip] = new Set();
+  // Attack patterns
+  const attackPatterns = {
+    "SQL Injection":
+      /(?:--|;|\bUNION\b|\bSELECT\b|\bINSERT\b|\bDELETE\b|\bUPDATE\b|\bDROP\b|\bTABLE\b|%27|%2D%2D)/i,
+    XSS: /<script|javascript:|onerror=|onload=|eval\(|alert\(|document\.cookie/i,
+    "Command Injection": /\b(?:cat|ls|pwd|rm|wget|curl|bash)\b/i,
+    "Directory Traversal": /(?:\.\.\/){2,}|%2e{2,}/i,
+    "Brute Force": /login|signin|authenticate|password|admin/i,
+  };
+
+  // Initialize IP stats
+  const initIpStats = (ip) => {
+    if (!stats.ipStats.requestCounts[ip]) {
+      stats.ipStats.requestCounts[ip] = 0;
+      stats.ipStats.attackCounts[ip] = 0;
+      stats.ipStats.statusCodes[ip] = {
+        "2xx": 0,
+        "3xx": 0,
+        "4xx": 0,
+        "5xx": 0,
+      };
+      stats.ipStats.methods[ip] = {};
+      stats.ipStats.bandwidthUsage[ip] = 0;
+      stats.ipStats.userAgents[ip] = new Set();
+      stats.ipStats.paths[ip] = new Set();
     }
   };
+
+  // Parse log line
+  const parseLine = (line, format) => {
+    try {
+      let match;
+
+      if (format === "nginx") {
+        // Nginx pattern remains the same
+        match = line.match(
+          /^(\S+) - (\S+) \[(.*?)\] "(\S+) ([^"]*) HTTP\/\d+\.\d+" (\d+) (\d+) "([^"]*)" "([^"]*)" "([^"]*)"$/
+        );
+        if (!match) return null;
+
+        return {
+          ipAddress: match[1],
+          remoteUser: match[2],
+          timestamp: match[3],
+          method: match[4],
+          path: match[5],
+          status: match[6],
+          bodyBytesSent: match[7],
+          referer: match[8],
+          userAgent: match[9],
+          xForwardedFor: match[10],
+        };
+      } else if (format === "apache") {
+        // Updated Apache pattern to be more flexible
+        match = line.match(
+          /^(\S+)\s+\S+\s+(\S+)\s+\[([^\]]+)\]\s+"(\S+)\s+([^\s"]+)(?:\s+HTTP\/[\d.]+)?"\s+(\d{3})\s+(\d+|-)/
+        );
+        if (!match) return null;
+
+        return {
+          ipAddress: match[1],
+          remoteUser: match[2],
+          timestamp: match[3],
+          method: match[4],
+          path: match[5],
+          status: match[6],
+          bodyBytesSent: match[7] === "-" ? "0" : match[7],
+          referer: "-",
+          userAgent: "-",
+          xForwardedFor: "-",
+        };
+      }
+
+      return null;
+    } catch (error) {
+      return null;
+    }
+  };
+
+  // Process log file
+  const lines = logContent.split("\n");
+  const totalLines = lines.length;
+  let validLines = 0;
 
   lines.forEach((line, index) => {
     if (index % 1000 === 0) {
       self.postMessage({ progress: Math.round((index / totalLines) * 100) });
     }
 
-    const match = line.match(
-      /^(\S+) - (\S+) \[(.*?)\] "(\S+) ([^"]*) HTTP\/\d+\.\d+" (\d+) (\d+) "([^"]*)" "([^"]*)" "([^"]*)"$/ // Adjust regex if needed
-    );
-    if (match) {
-      const [
-        ,
-        ipAddress,
-        remoteUser,
-        timestamp,
-        method,
-        path,
-        status,
-        bodyBytesSent,
-        referer,
-        userAgent,
-        xForwardedFor,
-      ] = match;
+    const trimmedLine = line.trim();
+    if (!trimmedLine) return;
 
-      if (!validHttpMethods.includes(method)) {
-        return;
+    const parsedLine = parseLine(trimmedLine, format);
+    if (!parsedLine) {
+      stats.requestStats.parseErrors++;
+      return;
+    }
+
+    validLines++;
+    const {
+      ipAddress,
+      remoteUser,
+      timestamp,
+      method,
+      path,
+      status,
+      bodyBytesSent,
+      referer,
+      userAgent,
+      xForwardedFor,
+    } = parsedLine;
+
+    if (!validHttpMethods.includes(method)) return;
+
+    // Update IP stats
+    initIpStats(ipAddress);
+    const bytes = parseInt(bodyBytesSent, 10) || 0;
+
+    stats.ipStats.requestCounts[ipAddress]++;
+    stats.ipStats.bandwidthUsage[ipAddress] += bytes;
+    stats.ipStats.lastSeen[ipAddress] = timestamp;
+    stats.ipStats.paths[ipAddress].add(path);
+    stats.ipStats.methods[ipAddress][method] =
+      (stats.ipStats.methods[ipAddress][method] || 0) + 1;
+    stats.ipStats.statusCodes[ipAddress][`${status[0]}xx`]++;
+
+    if (format === "nginx") {
+      stats.ipStats.userAgents[ipAddress].add(userAgent);
+      if (referer && referer !== "-") {
+        stats.referrerCounts[referer] =
+          (stats.referrerCounts[referer] || 0) + 1;
       }
+    }
 
-      // Update IP stats
-      initializeIpStats(ipAddress);
-      ipStats.requestCounts[ipAddress]++;
-      ipStats.bandwidthUsage[ipAddress] += parseInt(bodyBytesSent, 10);
-      ipStats.lastSeen[ipAddress] = timestamp;
-      ipStats.userAgents[ipAddress].add(userAgent);
-      ipStats.paths[ipAddress].add(path);
-      ipStats.methods[ipAddress][method] =
-        (ipStats.methods[ipAddress][method] || 0) + 1;
-      ipStats.statusCodes[ipAddress][status[0] + "xx"]++;
+    // Update global stats
+    stats.requestStats.totalRequests++;
+    stats.requestStats.uniqueIPs.add(ipAddress);
+    stats.httpMethods[method] = (stats.httpMethods[method] || 0) + 1;
+    stats.statusCodes[`${status[0]}xx`]++;
+    stats.requestedUrlCounts[path] = (stats.requestedUrlCounts[path] || 0) + 1;
 
-      // Track Referrer counts
-      if (referer) {
-        referrerCounts[referer] = (referrerCounts[referer] || 0) + 1;
+    // Process timestamp
+    try {
+      const date = new Date(timestamp.replace(/\[|\]/g, ""));
+      const hour = date.getHours();
+      if (!isNaN(hour) && hour >= 0 && hour < 24) {
+        stats.trafficOverTime[hour].count++;
       }
+    } catch (error) {
+      // Skip invalid timestamps
+    }
 
-      // Track Requested URL counts
-      requestedUrlCounts[path] = (requestedUrlCounts[path] || 0) + 1;
-
-      // Update general stats
-      requestStats.totalRequests++;
-      requestStats.uniqueIPs.add(ipAddress);
-      httpMethods[method] = (httpMethods[method] || 0) + 1;
-      const statusGroup = status[0] + "xx";
-      statusCodes[statusGroup]++;
-      const hour = new Date(timestamp.replace(":", " ")).getHours();
-      trafficOverTime[hour].count++;
-
-      let attackType = null;
-      for (const [type, pattern] of Object.entries(attackPatterns)) {
-        if (
-          pattern.test(path) ||
-          pattern.test(referer) ||
-          pattern.test(userAgent)
-        ) {
-          attackType = type;
-          break;
-        }
-      }
-
-      if (attackType) {
-        attackDistribution[attackType]++;
-        requestStats.totalAttackAttempts++;
-        ipStats.attackCounts[ipAddress]++;
-        recentAttacks.push({
+    // Check for attacks
+    for (const [type, pattern] of Object.entries(attackPatterns)) {
+      if (pattern.test(path)) {
+        stats.attackDistribution[type]++;
+        stats.requestStats.totalAttackAttempts++;
+        stats.ipStats.attackCounts[ipAddress]++;
+        stats.recentAttacks.push({
           timestamp,
           ipAddress,
           remoteUser,
-          xForwardedFor,
-          attackType,
+          attackType: type,
           requestPath: path,
         });
+        break;
       }
+    }
+
+    try {
+      const timestampStr = timestamp.replace(/\[|\]/g, "");
+      // Handle common log formats
+      const date = new Date(
+        timestampStr.replace(
+          /(\d{2})\/(\w{3})\/(\d{4}):(\d{2}:\d{2}:\d{2})/,
+          "$2 $1 $3 $4"
+        )
+      );
+
+      if (date instanceof Date && !isNaN(date)) {
+        const hour = date.getHours();
+        if (hour >= 0 && hour < 24) {
+          stats.trafficOverTime[hour].count++;
+        }
+      } else {
+        console.warn("Invalid timestamp format:", timestampStr);
+      }
+    } catch (error) {
+      console.warn("Error processing timestamp:", error);
     }
   });
 
-  // Process Top IPs
-  const topIp = Object.fromEntries(
-    Object.entries(ipStats.requestCounts)
+  const processedTrafficData = stats.trafficOverTime.map((entry) => ({
+    hour: entry.hour,
+    count: entry.count,
+  }));
+
+  // Abort if no valid lines were parsed
+  if (validLines === 0) {
+    self.postMessage({
+      error:
+        "This file doesn't appear to be a valid Nginx or Apache Http log. Please check the format and try again.",
+    });
+    return;
+  }
+
+  // Prepare final stats
+  const finalStats = {
+    requestStats: {
+      ...stats.requestStats,
+      uniqueIPs: stats.requestStats.uniqueIPs.size,
+    },
+    httpMethods: stats.httpMethods,
+    statusCodes: stats.statusCodes,
+    attackDistribution: stats.attackDistribution,
+    trafficOverTime: processedTrafficData,
+    topIp: Object.fromEntries(
+      Object.entries(stats.ipStats.requestCounts)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 10)
+    ),
+    topReferrers:
+      format === "nginx"
+        ? Object.fromEntries(
+            Object.entries(stats.referrerCounts)
+              .sort(([, a], [, b]) => b - a)
+              .slice(0, 10)
+          )
+        : {},
+    topRequestedUrls: Object.fromEntries(
+      Object.entries(stats.requestedUrlCounts)
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 10)
+    ),
+    suspiciousIps: Object.entries(stats.ipStats.attackCounts)
+      .filter(([, count]) => count > 0)
       .sort(([, a], [, b]) => b - a)
-      .slice(0, 10)
-  );
+      .reduce((acc, [ip, count]) => {
+        acc[ip] = {
+          attackCount: count,
+          requestCount: stats.ipStats.requestCounts[ip],
+          lastSeen: stats.ipStats.lastSeen[ip],
+          uniquePaths: stats.ipStats.paths[ip].size,
+          uniqueUserAgents: stats.ipStats.userAgents[ip].size,
+          bandwidthUsage: stats.ipStats.bandwidthUsage[ip],
+          methods: stats.ipStats.methods[ip],
+          statusCodes: stats.ipStats.statusCodes[ip],
+        };
+        return acc;
+      }, {}),
+    recentAttacks: stats.recentAttacks.slice(-100).reverse(),
+  };
 
-  // Process Top Referrers (Top 10)
-  const topReferrers = Object.fromEntries(
-    Object.entries(referrerCounts)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 10)
-  );
-
-  // Process Top Requested URLs (Top 10)
-  const topRequestedUrls = Object.fromEntries(
-    Object.entries(requestedUrlCounts)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 10)
-  );
-
-  // Process Suspicious IPs
-  const suspiciousIps = Object.entries(ipStats.attackCounts)
-    .filter(([, count]) => count > 0)
-    .sort(([, a], [, b]) => b - a)
-    .reduce((acc, [ip, count]) => {
-      acc[ip] = {
-        attackCount: count,
-        requestCount: ipStats.requestCounts[ip],
-        lastSeen: ipStats.lastSeen[ip],
-        uniquePaths: ipStats.paths[ip].size,
-        uniqueUserAgents: ipStats.userAgents[ip].size,
-        bandwidthUsage: ipStats.bandwidthUsage[ip],
-        methods: ipStats.methods[ip],
-        statusCodes: ipStats.statusCodes[ip],
-      };
-      return acc;
-    }, {});
-
-  requestStats.uniqueIPs = requestStats.uniqueIPs.size;
-  recentAttacks = recentAttacks.slice(-100).reverse();
-
-  self.postMessage({
-    requestStats,
-    httpMethods,
-    statusCodes,
-    attackDistribution,
-    trafficOverTime,
-    topIp,
-    topReferrers, // For Top Referrers chart
-    topRequestedUrls, // For Top Requested URLs chart
-    suspiciousIps,
-    recentAttacks,
-  });
+  self.postMessage(finalStats);
 };

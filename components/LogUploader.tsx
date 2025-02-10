@@ -6,9 +6,9 @@ import {
   FileText,
   AlertCircle,
   Loader2,
-  Link,
   Globe,
   FileUp,
+  CheckCircle,
 } from "lucide-react";
 
 interface LogUploaderProps {
@@ -19,22 +19,63 @@ interface LogUploaderProps {
 export function LogUploader({ onLogParsed, onFileUpload }: LogUploaderProps) {
   const [activeTab, setActiveTab] = useState("file");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isDetermining, setIsDetermining] = useState(false);
   const [progress, setProgress] = useState(0);
   const [errorMessage, setErrorMessage] = useState("");
   const [isDragging, setIsDragging] = useState(false);
   const [url, setUrl] = useState("");
+  const [detectedLogType, setDetectedLogType] = useState("");
 
-  const isNginxLog = (content: string | ArrayBuffer | null) => {
-    if (!content) return false;
-    const sanitizedContent = content
-      .toString()
-      .replace(/\r?\n|\r/g, " ")
-      .trim();
-    const nginxLogPattern =
-      /(\d+\.\d+\.\d+\.\d+)\s+-\s+-\s+\[.*?\]\s+"(GET|POST|PUT|DELETE|HEAD|OPTIONS|PATCH)\s+.*?\s+HTTP\/\d\.\d"\s+\d{3}\s+(\d+|-)\s+"(.*?)"\s+"(.*?)"/;
-    return nginxLogPattern.test(sanitizedContent);
+  // Regex untuk Nginx dan Apache
+  const nginxRegex =
+    /^(\S+)\s+-\s+-\s+\[(.*?)\]\s+"(GET|POST|PUT|DELETE|HEAD|OPTIONS|PATCH)\s+.*?\s+HTTP\/\d+\.\d+"\s+\d{3}\s+\d+\s+"[^"]*"\s+"[^"]*"/;
+  const apacheRegex =
+    /^(\S+)\s+\S+\s+\S+\s+\[([^\]]+)\]\s+"(GET|POST|PUT|DELETE|HEAD|OPTIONS|PATCH)\s+([^\s"]+)[^"]*"\s+(\d{3})\s+(\d+|-)/;
+
+  // Fungsi untuk menentukan jenis log berdasarkan sample baris
+  const determineLogType = (
+    content: string | ArrayBuffer | null
+  ): string | null => {
+    if (!content) return null;
+    const lines = content.toString().split("\n");
+    const sampleLines = lines.filter((line) => line.trim()).slice(0, 5);
+    let countNginx = 0;
+    let countApache = 0;
+    sampleLines.forEach((line) => {
+      if (nginxRegex.test(line)) countNginx++;
+      if (apacheRegex.test(line)) countApache++;
+    });
+    if (countNginx === 0 && countApache === 0) return null;
+    // Kalau sama atau jumlah Nginx lebih besar, prioritaskan Nginx
+    return countNginx >= countApache
+      ? "Detected Nginx Log"
+      : "Detected Apache Http Log";
   };
 
+  const processLogFile = (
+    content: string | ArrayBuffer | null,
+    format: string
+  ) => {
+    const worker = new Worker(
+      new URL("../workers/logParser.js", import.meta.url)
+    );
+    worker.onmessage = (event) => {
+      if (event.data.error) {
+        setErrorMessage(event.data.error);
+        setIsProcessing(false);
+        setDetectedLogType("");
+      } else if (event.data.progress) {
+        setProgress(event.data.progress);
+      } else {
+        onLogParsed(event.data);
+        setIsProcessing(false);
+        setDetectedLogType("");
+      }
+    };
+    worker.postMessage({ logContent: content, format });
+  };
+
+  // onDrop: pakai metode hitung sample lines untuk deteksi
   const onDrop = useCallback((acceptedFiles: any[]) => {
     const file = acceptedFiles[0];
     if (file) {
@@ -42,15 +83,29 @@ export function LogUploader({ onLogParsed, onFileUpload }: LogUploaderProps) {
       reader.onload = (event) => {
         if (event.target) {
           const content = event.target.result;
-          if (isNginxLog(content)) {
-            setIsProcessing(true);
-            setErrorMessage("");
-            processLogFile(content);
-          } else {
-            setErrorMessage(
-              "This file doesn't appear to be a valid Nginx log. Please check the format and try again."
-            );
-          }
+          // Masuk ke mode determining
+          setIsDetermining(true);
+          setErrorMessage("");
+          setTimeout(() => {
+            const logTypeDetected = determineLogType(content);
+            if (!logTypeDetected) {
+              setErrorMessage(
+                "This file doesn't appear to be a valid Nginx or Apache Http log. Please check the format and try again."
+              );
+              setIsDetermining(false);
+              return;
+            }
+            setDetectedLogType(logTypeDetected);
+            // Beri waktu agar user bisa baca dan lihat animasi check mark
+            setTimeout(() => {
+              setIsDetermining(false);
+              setIsProcessing(true);
+              processLogFile(
+                content,
+                logTypeDetected.includes("Nginx") ? "nginx" : "apache"
+              );
+            }, 1500);
+          }, 1500);
         }
       };
       reader.readAsText(file);
@@ -67,48 +122,47 @@ export function LogUploader({ onLogParsed, onFileUpload }: LogUploaderProps) {
     onDropAccepted: () => setIsDragging(false),
   });
 
+  // handleUrlSubmit: sama seperti onDrop, pakai determineLogType dengan delay
   const handleUrlSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!url) {
       setErrorMessage("Please enter a valid URL");
       return;
     }
-
-    setIsProcessing(true);
     setErrorMessage("");
     onFileUpload();
 
     try {
       const response = await fetch(url);
       const content = await response.text();
-
-      if (isNginxLog(content)) {
-        processLogFile(content);
-      } else {
-        setErrorMessage("The URL doesn't contain a valid Nginx log format");
-        setIsProcessing(false);
-      }
+      // Masuk ke mode determining
+      setIsDetermining(true);
+      setTimeout(() => {
+        const logTypeDetected = determineLogType(content);
+        if (!logTypeDetected) {
+          setErrorMessage(
+            "The URL doesn't contain a valid Nginx or Apache Http log format"
+          );
+          setIsDetermining(false);
+          setIsProcessing(false);
+          return;
+        }
+        setDetectedLogType(logTypeDetected);
+        setTimeout(() => {
+          setIsDetermining(false);
+          setIsProcessing(true);
+          processLogFile(
+            content,
+            logTypeDetected.includes("Nginx") ? "nginx" : "apache"
+          );
+        }, 1500);
+      }, 1500);
     } catch (error) {
       setErrorMessage(
         "Failed to fetch log file from URL. Please check the URL and try again."
       );
       setIsProcessing(false);
     }
-  };
-
-  const processLogFile = (content: string | ArrayBuffer | null) => {
-    const worker = new Worker(
-      new URL("../workers/logParser.js", import.meta.url)
-    );
-    worker.onmessage = (event) => {
-      if (event.data.progress) {
-        setProgress(event.data.progress);
-      } else {
-        onLogParsed(event.data);
-        setIsProcessing(false);
-      }
-    };
-    worker.postMessage(content);
   };
 
   return (
@@ -119,7 +173,7 @@ export function LogUploader({ onLogParsed, onFileUpload }: LogUploaderProps) {
       className="space-y-8"
     >
       {/* Enhanced Tab Navigation */}
-      <div className="flex space-x-2 rounded-xl  bg-gray-50/50 p-1.5 dark:bg-gray-800/50 backdrop-blur-sm shadow-sm">
+      <div className="flex space-x-2 rounded-xl bg-gray-50/50 p-1.5 dark:bg-gray-800/50 backdrop-blur-sm shadow-sm">
         <button
           onClick={() => setActiveTab("file")}
           className={`flex flex-1 items-center justify-center space-x-3 rounded-lg px-4 py-3 text-sm font-medium transition-transform duration-300 transform ${
@@ -179,11 +233,11 @@ export function LogUploader({ onLogParsed, onFileUpload }: LogUploaderProps) {
             <div
               {...getRootProps()}
               className={`relative overflow-hidden rounded-xl border-2 border-dashed p-12 text-center transition-all duration-300
-          ${
-            isDragging
-              ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-lg"
-              : "border-gray-300 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-600 hover:shadow-md"
-          } cursor-pointer group`}
+                ${
+                  isDragging
+                    ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-lg"
+                    : "border-gray-300 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-600 hover:shadow-md"
+                } cursor-pointer group`}
             >
               <input {...getInputProps()} />
 
@@ -193,8 +247,13 @@ export function LogUploader({ onLogParsed, onFileUpload }: LogUploaderProps) {
                 <div className="h-full w-full bg-[radial-gradient(circle,_transparent_20%,_#f0f0f0_20%,_#f0f0f0_21%,_transparent_21%,_transparent_50%)] bg-[length:1em_1em] dark:bg-[radial-gradient(circle,_transparent_20%,_#1a1a1a_20%,_#1a1a1a_21%,_transparent_21%,_transparent_50%)]" />
               </div>
 
-              {isProcessing ? (
-                <ProcessingState progress={progress} />
+              {isDetermining ? (
+                <DeterminingState logType={detectedLogType} />
+              ) : isProcessing ? (
+                <ProcessingState
+                  progress={progress}
+                  logType={detectedLogType}
+                />
               ) : (
                 <UploadState
                   isDragActive={isDragActive}
@@ -224,23 +283,28 @@ export function LogUploader({ onLogParsed, onFileUpload }: LogUploaderProps) {
                     onChange={(e) => setUrl(e.target.value)}
                     placeholder="Enter log file URL"
                     className="w-full rounded-full border bg-gradient-to-r from-blue-50 to-blue-100 px-4 py-3 text-sm shadow-inner transition-all duration-200 
-                placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-300 
-                dark:from-gray-700 dark:to-gray-800 dark:text-white dark:placeholder:text-gray-500 dark:focus:ring-blue-500"
+                      placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-4 focus:ring-blue-300 
+                      dark:from-gray-700 dark:to-gray-800 dark:text-white dark:placeholder:text-gray-500 dark:focus:ring-blue-500"
                   />
                   <Globe className="absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 text-blue-400" />
                 </div>
 
                 {/* Styled Button */}
                 <div className="w-full">
-                  {isProcessing ? (
-                    <ProcessingState progress={progress} />
+                  {isDetermining ? (
+                    <DeterminingState logType={detectedLogType} />
+                  ) : isProcessing ? (
+                    <ProcessingState
+                      progress={progress}
+                      logType={detectedLogType}
+                    />
                   ) : (
                     <button
                       type="submit"
                       onClick={handleUrlSubmit}
                       className="w-full rounded-full bg-gradient-to-r from-blue-500 to-blue-700 px-4 py-3 text-sm font-medium text-white 
-    shadow-md transition-all duration-200 hover:from-blue-700 hover:to-blue-800 focus:outline-none 
-    focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-500 transform hover:scale-[1.02] active:scale-[0.98]"
+        shadow-md transition-all duration-200 hover:from-blue-700 hover:to-blue-800 focus:outline-none 
+        focus:ring-4 focus:ring-blue-300 dark:focus:ring-blue-500 transform hover:scale-[1.02] active:scale-[0.98]"
                     >
                       Fetch and Analyze Log
                     </button>
@@ -256,13 +320,24 @@ export function LogUploader({ onLogParsed, onFileUpload }: LogUploaderProps) {
 }
 
 // Processing State Component
-function ProcessingState({ progress }: { progress: number }) {
+function ProcessingState({
+  progress,
+  logType,
+}: {
+  progress: number;
+  logType?: string;
+}) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       className="space-y-6 relative z-10"
     >
+      {logType && (
+        <p className="text-sm font-medium text-green-600 dark:text-green-400">
+          {logType}
+        </p>
+      )}
       <div className="flex items-center justify-center space-x-3">
         <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
         <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
@@ -318,6 +393,37 @@ function UploadState({
           <span>Accepts .log and .txt files</span>
         </div>
       </div>
+    </motion.div>
+  );
+}
+
+// Determining State Component
+function DeterminingState({ logType }: { logType: string }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="space-y-6"
+    >
+      <div className="flex items-center justify-center space-x-3">
+        <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
+        <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
+          Determining Log Type...
+        </p>
+      </div>
+      {logType && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1 }}
+          className="flex items-center justify-center space-x-2"
+        >
+          <p className="text-sm font-medium text-green-600 dark:text-green-400">
+            {logType}
+          </p>
+          <CheckCircle className="h-5 w-5 text-green-500" />
+        </motion.div>
+      )}
     </motion.div>
   );
 }

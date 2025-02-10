@@ -52,7 +52,7 @@ export default function Home() {
                 className="flex items-center space-x-1 sm:space-x-4"
               >
                 <h1 className="text-base sm:text-xl lg:text-2xl font-semibold text-gray-800 dark:text-gray-100 font-poppins tracking-wide">
-                  Nginx Log Analyzer
+                  Log Analyzer
                 </h1>
                 <span className="relative top-1 px-1 py-0.5 text-[10px] sm:text-xs font-light bg-blue-100 text-blue-800 rounded-full dark:bg-blue-900 dark:text-blue-100">
                   Beta
@@ -101,14 +101,22 @@ export default function Home() {
               >
                 <div className="space-y-5">
                   <div className="text-center">
-                    <img
-                      src="/assets/img/nginx.png"
-                      alt="Analyze Your Nginx Logs"
-                      className="w-24 sm:w-32 lg:w-40 mx-auto"
-                    />
+                    <div className="flex justify-center space-x-4">
+                      <img
+                        src="/assets/img/nginx.png"
+                        alt="Analyze Your Nginx Logs"
+                        className="w-24 sm:w-32 lg:w-40"
+                      />
+                      <img
+                        src="/assets/img/apache.png"
+                        alt="Analyze Your Apache Logs"
+                        className="w-24 sm:w-32 lg:w-40"
+                      />
+                    </div>
                     <p className="text-sm sm:text-base lg:text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto font-roboto">
-                      Upload your Nginx log file and get powerful insights into
-                      your server’s traffic and performance.
+                      Upload your Nginx or Apache HTTPD log file and get
+                      powerful insights into your server’s traffic and
+                      performance.
                     </p>
                   </div>
 
