@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     siteName: "Log Analyzer",
     images: [
       {
-        url: "https://nginx.aldotobing.online/assets/img/nginx.png",
+        url: "https://nginx.aldotobing.online/assets/img/analyze.jpg",
         width: 1200,
         height: 630,
         alt: "Log Analyzer Dashboard",
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
     title: "Log Analyzer - Analyze & Visualize Nginx and Apache Logs",
     description:
       "Analyze your Nginx and Apache HTTPD logs with powerful insights into your server’s traffic and performance.",
-    images: ["https://nginx.aldotobing.online/assets/img/nginx.png"],
+    images: ["https://nginx.aldotobing.online/assets/img/analyze.jpg"],
   },
   alternates: {
     canonical: "https://nginx.aldotobing.online",
