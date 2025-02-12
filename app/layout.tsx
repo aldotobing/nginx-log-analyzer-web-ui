@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Log Analyzer - Analyze & Visualize Nginx and Apache Logs",
     description:
-      "Analyze your Nginx and Apache HTTPD logs with powerful insights into your server’s traffic and performance.",
+      "Analyze your Nginx and Apache HTTPD logs with powerful insights into your server's traffic and performance.",
     url: "https://nginx.aldotobing.online",
     siteName: "Log Analyzer",
     images: [
@@ -39,7 +39,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Log Analyzer - Analyze & Visualize Nginx and Apache Logs",
     description:
-      "Analyze your Nginx and Apache HTTPD logs with powerful insights into your server’s traffic and performance.",
+      "Analyze your Nginx and Apache HTTPD logs with powerful insights into your server's traffic and performance.",
     images: ["https://nginx.aldotobing.online/assets/img/analyze.jpg"],
   },
   alternates: {
@@ -68,7 +68,7 @@ export default function RootLayout({
               name: "Log Analyzer",
               url: "https://nginx.aldotobing.online",
               description:
-                "Analyze your Nginx and Apache HTTPD logs with powerful insights into your server’s traffic and performance.",
+                "Analyze your Nginx and Apache HTTPD logs with powerful insights into your server's traffic and performance.",
               applicationCategory: "Utility",
               operatingSystem: "All",
               keywords: [
