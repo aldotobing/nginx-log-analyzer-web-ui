@@ -157,7 +157,7 @@ export function TopIpAddressesChart({ data }: TopIpAddressesChartProps) {
               key={ip}
               className="grid grid-cols-3 gap-2 md:gap-4 bg-white dark:bg-gray-800 px-2 md:px-4 py-2 rounded-lg shadow-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-300"
             >
-              <span className="text-gray-800 dark:text-gray-300 font-thin text-xs md:text-sm col-span-1 truncate">
+              <span className="text-gray-800 dark:text-gray-300 font-light text-xs md:text-sm col-span-1 truncate">
                 {ip}
               </span>
               <span className="text-gray-600 dark:text-gray-400 text-xs md:text-sm col-span-1 truncate">
