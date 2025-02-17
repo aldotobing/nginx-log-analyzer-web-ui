@@ -115,7 +115,7 @@ export default function Home() {
                         loading="lazy"
                       />
                     </div>
-                    <p className="text-sm sm:text-base lg:text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto font-roboto">
+                    <p className="text-sm sm:text-base lg:text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto font-sans">
                       Upload your Nginx or Apache HTTPD log file and get
                       powerful insights into your server’s traffic and
                       performance.
