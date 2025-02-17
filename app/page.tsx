@@ -106,11 +106,13 @@ export default function Home() {
                         src="/assets/img/nginx.png"
                         alt="Analyze Your Nginx Logs"
                         className="w-24 sm:w-32 lg:w-40"
+                        loading="lazy"
                       />
                       <img
                         src="/assets/img/apache.png"
                         alt="Analyze Your Apache Logs"
                         className="w-24 sm:w-32 lg:w-40"
+                        loading="lazy"
                       />
                     </div>
                     <p className="text-sm sm:text-base lg:text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto font-roboto">
@@ -202,6 +204,7 @@ export default function Home() {
                   src="/assets/img/github-mark.png"
                   alt="GitHub"
                   className="h-5 w-5 hover:opacity-80 transition-opacity duration-300"
+                  loading="lazy"
                 />
               </a>
               <a
@@ -214,6 +217,7 @@ export default function Home() {
                   src="/assets/img/x.png"
                   alt="Twitter"
                   className="h-4 w-4 hover:opacity-80 transition-opacity duration-300"
+                  loading="lazy"
                 />
               </a>
             </div>
