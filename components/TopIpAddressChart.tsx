@@ -60,13 +60,17 @@ export function TopIpAddressesChart({ data, suspiciousIps = {}, className = "" }
   useEffect(() => {
     const fetchIpInfo = async (ip: string): Promise<IpInfo> => {
       try {
-        const response = await fetch(`https://ipapi.co/${ip}/json/`);
+        const response = await fetch(`https://ipinfo.io/${ip}/json/`);
         if (!response.ok) throw new Error('Failed to fetch');
         const json = await response.json();
+        
+        // Map country code to full country name if needed
+        const countryName = new Intl.DisplayNames(['en'], { type: 'region' }).of(json.country) || json.region || "Unknown";
+        
         return {
           city: json.city || "Unknown",
-          country: json.country_name || "Unknown",
-          flag: json.country_code ? `https://flagcdn.com/16x12/${json.country_code.toLowerCase()}.png` : undefined,
+          country: countryName,
+          flag: json.country ? `https://flagcdn.com/16x12/${json.country.toLowerCase()}.png` : undefined,
         };
       } catch (error) {
         console.error(`Error fetching info for IP ${ip}:`, error);
