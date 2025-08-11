@@ -1,30 +1,86 @@
-import React from "react";
+import React, { useState, useMemo } from "react";
 import {
   useReactTable,
   getCoreRowModel,
   getSortedRowModel,
+  getPaginationRowModel,
   flexRender,
   type SortingState,
+  type ColumnDef,
 } from "@tanstack/react-table";
+import { motion } from "framer-motion";
+import { Shield, ChevronsUpDown, ChevronLeft, ChevronRight } from "lucide-react";
 
-interface RecentAttacksTableProps {
-  data: Array<{
-    timestamp: string;
-    ipAddress: string;
-    attackType: string;
-    requestPath: string;
-  }>;
+interface AttackEvent {
+  timestamp: string;
+  ipAddress: string;
+  attackType: string;
+  requestPath: string;
 }
 
-export function RecentAttacksTable({ data }: RecentAttacksTableProps) {
-  const [sorting, setSorting] = React.useState<SortingState>([]);
+interface RecentAttacksTableProps {
+  data: AttackEvent[];
+  className?: string;
+}
 
-  const columns = React.useMemo(
+// Helper function to parse Nginx timestamp
+const parseNginxTimestamp = (timestamp: string): Date | null => {
+  const monthMap: { [key: string]: number } = {
+    Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5,
+    Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11
+  };
+  
+  const parts = timestamp.match(/(\d{2})\/(\w{3})\/(\d{4}):(\d{2}):(\d{2}):(\d{2})/);
+  if (!parts) return null;
+
+  const [, day, month, year, hour, minute, second] = parts;
+  const monthIndex = monthMap[month];
+
+  if (monthIndex === undefined) return null;
+
+  return new Date(Date.UTC(Number(year), monthIndex, Number(day), Number(hour), Number(minute), Number(second)));
+};
+
+
+export function RecentAttacksTable({ data, className = "" }: RecentAttacksTableProps) {
+  const [sorting, setSorting] = useState<SortingState>([]);
+
+  const columns = useMemo<ColumnDef<AttackEvent>[]>(
     () => [
-      { header: "Timestamp", accessorKey: "timestamp" },
-      { header: "IP Address", accessorKey: "ipAddress" },
-      { header: "Attack Type", accessorKey: "attackType" },
-      { header: "Request Path", accessorKey: "requestPath" },
+      {
+        accessorKey: "timestamp",
+        header: ({ column }) => (
+          <button className="flex items-center gap-2" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+            Timestamp
+            <ChevronsUpDown className="h-4 w-4" />
+          </button>
+        ),
+        cell: ({ row }) => {
+          const date = parseNginxTimestamp(row.getValue("timestamp"));
+          return date ? <span className="font-mono text-xs">{date.toLocaleString()}</span> : "Invalid Date";
+        },
+      },
+      {
+        accessorKey: "ipAddress",
+        header: "IP Address",
+        cell: info => <span className="font-mono">{info.getValue<string>()}</span>,
+      },
+      {
+        accessorKey: "attackType",
+        header: "Attack Type",
+        cell: info => {
+          const attackType = info.getValue<string>();
+          const color = attackType.includes("SQLi") ? "bg-red-500/10 text-red-500"
+                      : attackType.includes("XSS") ? "bg-yellow-500/10 text-yellow-500"
+                      : "bg-purple-500/10 text-purple-500";
+          return <span className={`px-2 py-1 rounded-full text-xs font-medium ${color}`}>{attackType}</span>;
+        }
+      },
+      {
+        accessorKey: "requestPath",
+        header: "Request Path",
+        cell: info => <span className="font-mono break-all">{info.getValue<string>()}</span>,
+      },
     ],
     []
   );
@@ -36,103 +92,132 @@ export function RecentAttacksTable({ data }: RecentAttacksTableProps) {
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    initialState: {
+      pagination: {
+        pageSize: 8,
+      },
+    },
   });
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.05 }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { y: 10, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+    }
+  };
+
   return (
-    <>
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 transition-all duration-300 hover:shadow-lg w-full overflow-x-auto">
-        <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-200 mb-4 text-center">
-          Recent Attacks
+    <div className={className}>
+      <div className="p-6 pb-4 border-b border-gray-200/50 dark:border-gray-700/50">
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center space-x-2">
+          <Shield className="h-5 w-5 text-red-500" />
+          <span>Recent Security Events</span>
         </h2>
-        {/* Satu container untuk scrollable table yang stretched ke full card */}
-        <div className="relative overflow-x-auto custom-scrollbar max-h-[400px]">
-          <table className="min-w-full table-fixed border-collapse text-sm">
+        <p className="text-gray-600 dark:text-gray-400 mt-1">
+          Detected threats and suspicious activities from logs.
+        </p>
+      </div>
+
+      <div className="p-6">
+        <div className="overflow-x-auto custom-scrollbar">
+          <table className="min-w-full text-sm table-fixed">
             <colgroup>
-              <col className="w-1/4" />
-              <col className="w-1/4" />
-              <col className="w-1/4" />
-              <col className="w-1/4" />
+              <col className="w-[25%]" />
+              <col className="w-[15%]" />
+              <col className="w-[20%]" />
+              <col className="w-[40%]" />
             </colgroup>
-            <thead className="sticky top-0 z-10 bg-gradient-to-r from-blue-100 to-blue-200 dark:bg-gradient-to-r dark:from-gray-600 dark:to-gray-700 shadow">
-              <tr>
-                {table.getHeaderGroups()[0].headers.map((header) => (
-                  <th
-                    key={header.id}
-                    className="px-4 py-4 text-left text-xs font-medium text-gray-600 dark:text-gray-300 uppercase tracking-wider border border-gray-200 dark:border-gray-600 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
-                    onClick={header.column.getToggleSortingHandler()}
-                  >
-                    <div className="flex items-center space-x-1">
-                      {flexRender(
-                        header.column.columnDef.header,
-                        header.getContext()
-                      )}
-                      {header.column.getIsSorted() && (
-                        <span className="text-xs text-gray-400">
-                          {header.column.getIsSorted() === "asc" ? "▲" : "▼"}
-                        </span>
-                      )}
-                    </div>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="bg-white dark:bg-gray-800">
-              {table.getRowModel().rows.map((row) => (
-                <tr
-                  key={row.id}
-                  className="hover:bg-gray-50 dark:hover:bg-gray-700"
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <td
-                      key={cell.id}
-                      className="px-4 py-2 text-left border border-gray-200 dark:border-gray-600 text-gray-800 dark:text-gray-200"
-                    >
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </td>
+            <thead className="border-b border-gray-200/50 dark:border-gray-700/50">
+              {table.getHeaderGroups().map(headerGroup => (
+                <tr key={headerGroup.id}>
+                  {headerGroup.headers.map(header => (
+                    <th key={header.id} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                    </th>
                   ))}
                 </tr>
               ))}
-            </tbody>
+            </thead>
+            <motion.tbody
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+            >
+              {table.getRowModel().rows.map(row => (
+                <motion.tr 
+                  key={row.id}
+                  variants={itemVariants}
+                  className="border-b border-gray-200/50 dark:border-gray-700/50 hover:bg-gray-50/50 dark:hover:bg-gray-700/20"
+                >
+                  {row.getVisibleCells().map(cell => (
+                    <td key={cell.id} className="px-4 py-3 text-gray-700 dark:text-gray-300 align-top">
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
+                  ))}
+                </motion.tr>
+              ))}
+            </motion.tbody>
           </table>
+        </div>
+
+        {/* Pagination Controls */}
+        <div className="flex items-center justify-between mt-4">
+          <span className="text-xs text-gray-600 dark:text-gray-400">
+            Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
+              className="p-1 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <button
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+              className="p-1 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
+              <ChevronRight className="h-5 w-5" />
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Custom Scrollbar Styles */}
       <style jsx>{`
-        /* Webkit browsers */
         .custom-scrollbar::-webkit-scrollbar {
-          width: 8px;
-          height: 8px;
-          opacity: 0;
-          transition: opacity 0.3s ease;
-        }
-        .custom-scrollbar:hover::-webkit-scrollbar {
-          opacity: 1;
+          height: 6px;
         }
         .custom-scrollbar::-webkit-scrollbar-track {
           background: transparent;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-          background-color: rgba(100, 100, 100, 0.5);
-          border-radius: 4px;
-          border: 2px solid transparent;
-          background-clip: content-box;
+          background-color: rgba(156, 163, 175, 0.5);
+          border-radius: 3px;
         }
         .custom-scrollbar:hover::-webkit-scrollbar-thumb {
-          background-color: rgba(100, 100, 100, 0.8);
+          background-color: rgba(156, 163, 175, 0.8);
         }
-        /* Firefox */
         .custom-scrollbar {
           scrollbar-width: thin;
-          scrollbar-color: rgba(100, 100, 100, 0.5) transparent;
-        }
-        .custom-scrollbar:hover {
-          scrollbar-color: rgba(100, 100, 100, 0.8) transparent;
+          scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
         }
       `}</style>
-    </>
+    </div>
   );
 }

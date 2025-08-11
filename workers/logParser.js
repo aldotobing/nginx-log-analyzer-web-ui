@@ -80,8 +80,8 @@ self.onmessage = (e) => {
 
     "Command Injection": new RegExp([
       // More comprehensive command injection patterns
-      "\\b(?:cat|ls|id|uname|whoami|pwd|rm|touch|wget|curl|scp|rsync|ftp|nc|ncat|nmap|ping|traceroute|telnet|ssh|bash|sh|zsh|dash|powershell|cmd\\.exe|cmd\\/c|\\|\\||&&|;)\\b",
-      "\\$\\s*\\(.*\\)",              // $(command)
+      "\\b(?:cat|ls|uname|whoami|pwd|rm|touch|wget|curl|scp|rsync|ftp|nc|ncat|nmap|ping|traceroute|telnet|ssh|bash|sh|zsh|dash|powershell|cmd\\.exe|cmd\\/c|\\|\\||&&|;)\\b",
+      "\\$\s*\\(.*\\)",              // $(command)
       "`.*`",                         // `command`
       "\\|\\|\\s*\\w+",               // || command
       "&&\\s*\\w+",                   // && command

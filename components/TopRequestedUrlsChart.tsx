@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Bar } from "react-chartjs-2";
 import { motion } from "framer-motion";
 import {
@@ -10,10 +10,8 @@ import {
   Tooltip,
   Legend,
   ChartOptions,
-  TooltipItem,
-  TooltipModel,
 } from "chart.js";
-import { MapPin } from "lucide-react";
+import { Link } from "lucide-react";
 
 ChartJS.register(
   CategoryScale,
@@ -24,19 +22,13 @@ ChartJS.register(
   Legend
 );
 
-interface TopIpAddressesChartProps {
-  data: Record<string, number>;
+interface TopRequestedUrlsChartProps {
+  fetchData: () => Promise<Record<string, number>>;
   className?: string;
 }
 
-interface IpInfo {
-  city: string;
-  country: string;
-  flag?: string;
-}
-
-export function TopIpAddressesChart({ data, className = "" }: TopIpAddressesChartProps) {
-  const [ipInfo, setIpInfo] = useState<Record<string, IpInfo>>({});
+export function TopRequestedUrlsChart({ fetchData, className = "" }: TopRequestedUrlsChartProps) {
+  const [data, setData] = useState<Record<string, number>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(false);
 
@@ -50,63 +42,54 @@ export function TopIpAddressesChart({ data, className = "" }: TopIpAddressesChar
     return () => observer.disconnect();
   }, []);
 
+  useEffect(() => {
+    async function loadData() {
+      setIsLoading(true);
+      try {
+        const result = await fetchData();
+        setData(result);
+      } catch (err) {
+        console.error("Error fetching requested URLs data:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadData();
+  }, [fetchData]);
+
   const sortedData = useMemo(() => {
     return Object.entries(data)
       .sort((a, b) => b[1] - a[1])
-      .slice(0, 7); // Limit to 7 for a cleaner look
+      .slice(0, 7);
   }, [data]);
 
-  useEffect(() => {
-    const fetchIpInfo = async (ip: string): Promise<IpInfo> => {
-      try {
-        const response = await fetch(`https://ipapi.co/${ip}/json/`);
-        if (!response.ok) throw new Error('Failed to fetch');
-        const json = await response.json();
-        return {
-          city: json.city || "Unknown",
-          country: json.country_name || "Unknown",
-          flag: json.country_code ? `https://flagcdn.com/16x12/${json.country_code.toLowerCase()}.png` : undefined,
-        };
-      } catch (error) {
-        console.error(`Error fetching info for IP ${ip}:`, error);
-        return { city: "N/A", country: "N/A" };
-      }
-    };
+  if (isLoading) {
+    return (
+      <div className={`p-8 ${className}`}>
+        <div className="text-center">
+          <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center animate-pulse">
+            <Link className="h-8 w-8 text-gray-400" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+            Loading Top URLs...
+          </h3>
+        </div>
+      </div>
+    );
+  }
 
-    const fetchAllIpInfo = async () => {
-      setIsLoading(true);
-      const ips = sortedData.map(([ip]) => ip);
-      const infoPromises = ips.map(ip => fetchIpInfo(ip));
-      const infoArray = await Promise.all(infoPromises);
-      
-      const infoMap: Record<string, IpInfo> = {};
-      ips.forEach((ip, index) => {
-        infoMap[ip] = infoArray[index];
-      });
-
-      setIpInfo(infoMap);
-      setIsLoading(false);
-    };
-
-    if (sortedData.length > 0) {
-      fetchAllIpInfo();
-    } else {
-      setIsLoading(false);
-    }
-  }, [sortedData]);
-
-  if (!data || Object.keys(data).length === 0) {
+  if (Object.keys(data).length === 0) {
     return (
       <div className={`p-8 ${className}`}>
         <div className="text-center">
           <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
-            <MapPin className="h-8 w-8 text-gray-400" />
+            <Link className="h-8 w-8 text-gray-400" />
           </div>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-            No IP Address Data
+            No URL Data
           </h3>
           <p className="text-gray-600 dark:text-gray-400">
-            Upload logs to see top IP addresses.
+            Upload logs to see top requested URLs.
           </p>
         </div>
       </div>
@@ -114,16 +97,16 @@ export function TopIpAddressesChart({ data, className = "" }: TopIpAddressesChar
   }
 
   const chartData = {
-    labels: sortedData.map(([ip]) => ip),
+    labels: sortedData.map(([url]) => url.length > 30 ? `${url.substring(0, 27)}...` : url),
     datasets: [
       {
         label: "Requests",
         data: sortedData.map(([, count]) => count),
-        backgroundColor: isDarkMode ? 'rgba(59, 130, 246, 0.5)' : 'rgba(59, 130, 246, 0.7)',
-        borderColor: 'rgba(59, 130, 246, 1)',
+        backgroundColor: isDarkMode ? 'rgba(34, 197, 94, 0.5)' : 'rgba(34, 197, 94, 0.7)',
+        borderColor: 'rgba(34, 197, 94, 1)',
         borderWidth: 2,
         borderRadius: 6,
-        hoverBackgroundColor: 'rgba(59, 130, 246, 1)',
+        hoverBackgroundColor: 'rgba(34, 197, 94, 1)',
       },
     ],
   };
@@ -149,19 +132,11 @@ export function TopIpAddressesChart({ data, className = "" }: TopIpAddressesChar
         cornerRadius: 12,
         displayColors: false,
         callbacks: {
-          title: (items: TooltipItem<"bar">[]) => {
-            const item = items[0];
-            return `IP: ${item.label}`;
+          title: (context) => {
+            const originalLabel = sortedData[context[0].dataIndex][0];
+            return `URL: ${originalLabel}`;
           },
-          label: (context: TooltipItem<"bar">) => {
-            const ip = context.label;
-            const count = context.raw as number;
-            const location = ipInfo[ip] ? `${ipInfo[ip].city}, ${ipInfo[ip].country}` : 'Loading...';
-            return [
-              `Requests: ${count.toLocaleString()}`,
-              `Location: ${location}`
-            ];
-          },
+          label: (context) => `Requests: ${(context.raw as number).toLocaleString()}`,
         },
       },
     },
@@ -177,13 +152,11 @@ export function TopIpAddressesChart({ data, className = "" }: TopIpAddressesChar
         beginAtZero: true,
         grid: {
           color: isDarkMode ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.05)",
+          drawBorder: false,
         },
         ticks: {
           color: isDarkMode ? "#9ca3af" : "#6b7280",
         },
-        border: {
-          display: false
-        }
       },
     },
   };
@@ -208,11 +181,11 @@ export function TopIpAddressesChart({ data, className = "" }: TopIpAddressesChar
     <div className={className}>
       <div className="p-6 pb-4 border-b border-gray-200/50 dark:border-gray-700/50">
         <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center space-x-2">
-          <MapPin className="h-5 w-5 text-blue-500" />
-          <span>Top IP Addresses</span>
+          <Link className="h-5 w-5 text-green-500" />
+          <span>Top Requested URLs</span>
         </h2>
         <p className="text-gray-600 dark:text-gray-400 mt-1">
-          Top IP addresses by request volume.
+          Most frequently accessed URLs.
         </p>
       </div>
 
@@ -223,8 +196,7 @@ export function TopIpAddressesChart({ data, className = "" }: TopIpAddressesChar
 
         <div className="flex flex-col pt-4 border-t border-gray-200/50 dark:border-gray-700/50">
           <div className="grid grid-cols-12 gap-2 px-2 pb-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
-            <div className="col-span-5">IP Address</div>
-            <div className="col-span-5">Location</div>
+            <div className="col-span-10">URL Path</div>
             <div className="col-span-2 text-right">Requests</div>
           </div>
           <motion.div
@@ -233,24 +205,18 @@ export function TopIpAddressesChart({ data, className = "" }: TopIpAddressesChar
             initial="hidden"
             animate="visible"
           >
-            {sortedData.map(([ip, count]) => (
+            {sortedData.map(([url, count]) => (
               <motion.div
-                key={ip}
+                key={url}
                 variants={itemVariants}
                 className="grid grid-cols-12 gap-2 items-center p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors"
               >
-                <div className="col-span-5 text-sm font-mono truncate text-gray-700 dark:text-gray-300">{ip}</div>
-                <div className="col-span-5 text-xs text-gray-600 dark:text-gray-400 truncate">
-                  {isLoading ? (
-                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-3/4"></div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      {ipInfo[ip]?.flag && <img src={ipInfo[ip].flag} alt={ipInfo[ip].country} className="w-4 h-3" />}
-                      <span>{ipInfo[ip] ? `${ipInfo[ip].city}, ${ipInfo[ip].country}` : 'N/A'}</span>
-                    </div>
-                  )}
+                <div className="col-span-10 text-sm font-mono truncate text-gray-700 dark:text-gray-300" title={url}>
+                  {url}
                 </div>
-                <div className="col-span-2 text-sm font-medium text-right text-gray-800 dark:text-gray-200">{count.toLocaleString()}</div>
+                <div className="col-span-2 text-sm font-medium text-right text-gray-800 dark:text-gray-200">
+                  {count.toLocaleString()}
+                </div>
               </motion.div>
             ))}
           </motion.div>
@@ -260,4 +226,4 @@ export function TopIpAddressesChart({ data, className = "" }: TopIpAddressesChar
   );
 }
 
-export default TopIpAddressesChart;
+export default TopRequestedUrlsChart;

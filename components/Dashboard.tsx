@@ -9,7 +9,7 @@ import TrafficOverTimeChart from "./TrafficOverTimeChart";
 import { RecentAttacksTable } from "./RecentAttacksTable";
 import TopIpAddressesChart from "./TopIpAddressChart";
 import TopReferringUrlsChart from "./TopReferringUrlsChart";
-import TopRequestedUrlsChart from "./TopRequestedUrlsChart.tsx";
+import TopRequestedUrlsChart from "./TopRequestedUrlsChart";
 
 interface SuspiciousIpData {
   attackCount: number;

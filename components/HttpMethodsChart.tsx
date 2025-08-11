@@ -1,13 +1,15 @@
-import React from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Doughnut } from "react-chartjs-2";
+import { motion } from "framer-motion";
 import {
   Chart as ChartJS,
   ArcElement,
   Tooltip,
   Legend,
   ChartOptions,
+  Plugin,
 } from "chart.js";
-import { Info } from "lucide-react";
+import { PieChart, Server, Zap, AlertTriangle, ArrowRightLeft } from "lucide-react";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -24,199 +26,286 @@ const HTTP_METHOD_DESCRIPTIONS: Readonly<Record<string, string>> = {
 const HTTP_METHOD_COLORS: Readonly<
   Record<string, { base: string; hover: string }>
 > = {
-  GET: { base: "#3B82F6", hover: "#2563EB" },
-  POST: { base: "#10B981", hover: "#059669" },
-  PUT: { base: "#F59E0B", hover: "#D97706" },
-  DELETE: { base: "#EF4444", hover: "#DC2626" },
-  PATCH: { base: "#8B5CF6", hover: "#7C3AED" },
-  OPTIONS: { base: "#6B7280", hover: "#4B5563" },
-  HEAD: { base: "#EC4899", hover: "#DB2777" },
+  GET: { base: "#0ea5e9", hover: "#0284c7" }, // sky-500, sky-600
+  POST: { base: "#22c55e", hover: "#16a34a" }, // green-500, green-600
+  PUT: { base: "#f97316", hover: "#ea580c" }, // orange-500, orange-600
+  DELETE: { base: "#ef4444", hover: "#dc2626" }, // red-500, red-600
+  PATCH: { base: "#a855f7", hover: "#9333ea" }, // purple-500, purple-600
+  OPTIONS: { base: "#64748b", hover: "#475569" }, // slate-500, slate-600
+  HEAD: { base: "#ec4899", hover: "#db2777" }, // pink-500, pink-600
 };
 
 interface HttpMethodsChartProps {
   data: Record<string, number>;
+  className?: string;
 }
 
-export function HttpMethodsChart({ data }: HttpMethodsChartProps) {
-  const total = Object.values(data).reduce((sum, value) => sum + value, 0);
-  const isDarkMode = document.documentElement.classList.contains("dark");
+export function HttpMethodsChart({ data, className = "" }: HttpMethodsChartProps) {
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const chartRef = useRef<ChartJS<"doughnut">>(null);
+
+  useEffect(() => {
+    const darkMode = document.documentElement.classList.contains("dark");
+    setIsDarkMode(darkMode);
+
+    const observer = new MutationObserver(() => {
+      setIsDarkMode(document.documentElement.classList.contains("dark"));
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
+
+  const total = useMemo(() => Object.values(data).reduce((sum, value) => sum + value, 0), [data]);
+
+  const methodsData = useMemo(() => {
+    if (total === 0) return [];
+    return Object.entries(data)
+      .map(([method, count]) => ({
+        method,
+        count,
+        percentage: ((count / total) * 100).toFixed(1),
+      }))
+      .sort((a, b) => b.count - a.count);
+  }, [data, total]);
 
   if (total === 0) {
     return (
-      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg p-6 text-center">
-        <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-200">
-          HTTP Methods Distribution
-        </h2>
-        <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-          No data available to display.
-        </p>
+      <div className={`p-8 ${className}`}>
+        <div className="text-center">
+          <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
+            <PieChart className="h-8 w-8 text-gray-400" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+            No HTTP Method Data
+          </h3>
+          <p className="text-gray-600 dark:text-gray-400">
+            Upload log files to see method distributions.
+          </p>
+        </div>
       </div>
     );
   }
 
-  const methodsData = Object.entries(data)
-    .map(([method, count]) => ({
-      method,
-      count,
-      percentage: ((count / total) * 100).toFixed(1),
-    }))
-    .sort((a, b) => b.count - a.count);
-
-  const getGradient = (context: CanvasRenderingContext2D, color: string) => {
-    const gradient = context.createLinearGradient(0, 0, 0, 400);
-    gradient.addColorStop(0, color);
-    gradient.addColorStop(1, `${color}80`);
-    return gradient;
-  };
-
-  const chartData = {
+  const chartData = useMemo(() => ({
     labels: methodsData.map((item) => item.method),
     datasets: [
       {
         data: methodsData.map((item) => item.count),
-        backgroundColor: methodsData.map((item, i) => {
-          const ctx = document.createElement("canvas").getContext("2d");
-          return ctx
-            ? getGradient(
-                ctx,
-                HTTP_METHOD_COLORS[item.method]?.base || "#6B7280"
-              )
-            : "#6B7280";
-        }),
-        hoverBackgroundColor: methodsData.map(
-          (item) => HTTP_METHOD_COLORS[item.method]?.hover ?? "#4B5563"
+        backgroundColor: methodsData.map(
+          (item) => HTTP_METHOD_COLORS[item.method]?.base ?? "#64748b"
         ),
-        borderWidth: 2,
-        borderColor: isDarkMode ? "#111827" : "#ffffff",
+        hoverBackgroundColor: methodsData.map(
+          (item) => HTTP_METHOD_COLORS[item.method]?.hover ?? "#475569"
+        ),
+        borderWidth: 4,
+        borderColor: isDarkMode ? "#1f2937" : "#ffffff",
+        hoverBorderColor: isDarkMode ? "#374151" : "#f9fafb",
+        hoverOffset: 15,
       },
     ],
+  }), [methodsData, isDarkMode]);
+
+  const centerTextPlugin: Plugin<"doughnut"> = {
+    id: 'centerText',
+    afterDraw: (chart) => {
+      const { ctx, chartArea } = chart;
+      if (!chartArea) return;
+      
+      const { left, top, width, height } = chartArea;
+      ctx.save();
+      ctx.font = `bold ${Math.min(width / 7, 40)}px sans-serif`;
+      ctx.fillStyle = isDarkMode ? '#f9fafb' : '#111827';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const text = total.toLocaleString();
+      ctx.fillText(text, left + width / 2, top + height / 2 - 10);
+      
+      ctx.font = `500 ${Math.min(width / 18, 16)}px sans-serif`;
+      ctx.fillStyle = isDarkMode ? '#9ca3af' : '#6b7280';
+      ctx.fillText('Total Requests', left + width / 2, top + height / 2 + 25);
+      ctx.restore();
+    }
   };
 
-  const options: ChartOptions<"doughnut"> = {
+  const options: ChartOptions<"doughnut"> = useMemo(() => ({
     responsive: true,
     maintainAspectRatio: false,
-    cutout: "60%",
+    cutout: "70%",
     animation: {
       animateScale: true,
       animateRotate: true,
+      duration: 1200,
+      easing: 'easeOutQuart'
     },
     plugins: {
       legend: {
-        position: "bottom",
-        labels: {
-          padding: 10,
-          color: isDarkMode ? "#E5E7EB" : "#1F2937",
-          font: {
-            size: 14,
-            family: "'Inter', sans-serif",
-            lineHeight: 1.6,
-            weight: 600,
-          },
-          generateLabels: (chart) => {
-            const datasets = chart.data.datasets[0];
-            if (
-              !datasets.backgroundColor ||
-              !Array.isArray(datasets.backgroundColor)
-            ) {
-              return [];
-            }
-            return (chart.data.labels || []).map((label, i) => ({
-              text: `${label as string} (${methodsData[i].percentage}%)`,
-              fillStyle: Array.isArray(datasets.backgroundColor)
-                ? datasets.backgroundColor[i]
-                : "#6B7280",
-              hidden: false,
-              index: i,
-            }));
-          },
-        },
+        display: false, // Legend is now custom-built
       },
       tooltip: {
-        bodyColor: isDarkMode ? "#E5E7EB" : "#1F2937",
-        backgroundColor: isDarkMode ? "#111827" : "rgba(255, 255, 255, 0.9)",
-        titleColor: isDarkMode ? "#F3F4F6" : "#111827",
+        enabled: true,
+        backgroundColor: isDarkMode ? "rgba(17, 24, 39, 0.9)" : "rgba(255, 255, 255, 0.9)",
+        titleColor: isDarkMode ? "#F9FAFB" : "#111827",
+        bodyColor: isDarkMode ? "#D1D5DB" : "#374151",
+        borderColor: isDarkMode ? "rgba(209, 213, 219, 0.2)" : "rgba(0, 0, 0, 0.1)",
+        borderWidth: 1,
+        padding: 15,
+        cornerRadius: 12,
+        displayColors: true,
+        boxPadding: 4,
         callbacks: {
+          title: (context) => `Method: ${context[0].label}`,
           label: (context) => {
-            const method = context.label ?? "Unknown";
             const count = context.raw as number;
             const percentage = ((count / total) * 100).toFixed(1);
-            return [
-              `Count: ${count.toLocaleString()}`,
-              `Percentage: ${percentage}%`,
-              `Description: ${
-                HTTP_METHOD_DESCRIPTIONS[method] ?? "Other HTTP method"
-              }`,
-            ];
+            return ` ${count.toLocaleString()} requests (${percentage}%)`;
           },
+          afterBody: (context) => {
+            const method = context[0].label ?? "Unknown";
+            return `
+${HTTP_METHOD_DESCRIPTIONS[method] ?? "Other HTTP method"}`;
+          }
         },
       },
     },
+  }), [isDarkMode, total]);
+
+  const topMethod = methodsData[0];
+  const riskyMethods = ['DELETE', 'PUT', 'PATCH'];
+  const riskyRequestsCount = useMemo(() => methodsData
+    .filter(m => riskyMethods.includes(m.method))
+    .reduce((sum, m) => sum + m.count, 0), [methodsData]);
+
+  const metrics = [
+    {
+      title: "Dominant Method",
+      value: topMethod.method,
+      icon: Zap,
+      color: "blue",
+      subtitle: `${topMethod.count.toLocaleString()} reqs (${topMethod.percentage}%)`
+    },
+    {
+      title: "Unique Methods",
+      value: methodsData.length,
+      icon: ArrowRightLeft,
+      color: "green",
+      subtitle: "detected in logs"
+    },
+    {
+      title: "Risky Methods",
+      value: riskyRequestsCount.toLocaleString(),
+      icon: AlertTriangle,
+      color: riskyRequestsCount > 0 ? "red" : "gray",
+      subtitle: "DELETE, PUT, PATCH"
+    },
+    {
+      title: "Total Requests",
+      value: total.toLocaleString(),
+      icon: Server,
+      color: "purple",
+      subtitle: "across all methods"
+    },
+  ];
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: {
+        type: 'spring',
+        stiffness: 100
+      }
+    }
   };
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg p-6 transition-all duration-300 hover:shadow-xl">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-200">
-            HTTP Methods Distribution
-          </h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            Analysis of {total.toLocaleString()} requests
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Info className="w-5 h-5 text-gray-400" />
-          <span className="text-sm text-gray-500 dark:text-gray-400">
-            Hover for details
-          </span>
-        </div>
-      </div>
-
-      <div className="h-[400px] relative">
-        <Doughnut data={chartData} options={options} />
-      </div>
-
-      <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {methodsData.slice(0, 3).map(({ method, count, percentage }) => (
-          <div
-            key={method}
-            className="p-4 rounded-lg"
-            style={{
-              backgroundColor: `${
-                HTTP_METHOD_COLORS[method]?.base ?? "#6B7280"
-              }15`,
-            }}
-          >
-            <div className="font-semibold text-gray-700 dark:text-gray-300">
-              {method}
-            </div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">
-              {count.toLocaleString()} requests ({percentage}%)
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-8 text-sm text-gray-700 dark:text-gray-300">
-        <p>
-          <strong>Key Insights:</strong>
+    <div className={className}>
+      <div className="p-6 pb-4 border-b border-gray-200/50 dark:border-gray-700/50">
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center space-x-2">
+          <PieChart className="h-5 w-5 text-blue-500" />
+          <span>HTTP Methods Distribution</span>
+        </h2>
+        <p className="text-gray-600 dark:text-gray-400 mt-1">
+          Breakdown of {total.toLocaleString()} requests by method type.
         </p>
-        <ul className="list-disc pl-6 mt-2">
-          <li>
-            <strong>{methodsData[0].method}</strong> method is the most common
-            with <strong>{methodsData[0].percentage}%</strong> of the total
-            requests.
-          </li>
-          <li>
-            <strong>DELETE</strong> method is used relatively frequently, which
-            might indicate a risk and should be closely monitored.
-          </li>
-          <li>
-            Methods like <strong>OPTIONS</strong> and <strong>HEAD</strong> are
-            less frequent but still important for understanding the nature of
-            client-server communication.
-          </li>
-        </ul>
+      </div>
+
+      <div className="p-6 space-y-6">
+        <div className="h-[250px] md:h-[300px] relative">
+          <Doughnut ref={chartRef} data={chartData} options={options} plugins={[centerTextPlugin]} />
+        </div>
+        
+        <div className="flex flex-wrap justify-center gap-4">
+          {methodsData.map((item, index) => (
+            <div 
+              key={item.method}
+              className="flex items-center gap-2 text-sm cursor-pointer"
+              onMouseEnter={() => {
+                if (chartRef.current) {
+                  chartRef.current.setActiveElements([{ datasetIndex: 0, index }]);
+                  chartRef.current.update();
+                }
+              }}
+              onMouseLeave={() => {
+                if (chartRef.current) {
+                  chartRef.current.setActiveElements([]);
+                  chartRef.current.update();
+                }
+              }}
+            >
+              <div 
+                className="w-3 h-3 rounded-sm"
+                style={{ backgroundColor: HTTP_METHOD_COLORS[item.method]?.base ?? '#64748b' }}
+              ></div>
+              <span className="font-medium text-gray-700 dark:text-gray-300">{item.method}</span>
+              <span className="text-gray-500 dark:text-gray-400">({item.percentage}%)</span>
+            </div>
+          ))}
+        </div>
+
+        <motion.div 
+          className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-gray-200/50 dark:border-gray-700/50"
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+        >
+          {metrics.map((metric) => {
+            const Icon = metric.icon;
+            const colorClasses = {
+              blue: "bg-sky-100 dark:bg-sky-900/30 text-sky-600 dark:text-sky-300",
+              green: "bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-300",
+              purple: "bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-300",
+              red: "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-300",
+              gray: "bg-slate-100 dark:bg-slate-900/30 text-slate-600 dark:text-slate-300"
+            };
+
+            return (
+              <motion.div
+                key={metric.title}
+                variants={itemVariants}
+                className="bg-white/50 dark:bg-gray-800/50 p-4 rounded-lg text-center transition-all duration-200 hover:shadow-md hover:-translate-y-1"
+              >
+                <Icon className={`h-7 w-7 mx-auto p-1 rounded-full ${colorClasses[metric.color as keyof typeof colorClasses]}`} />
+                <dd className="text-xl font-bold text-gray-800 dark:text-gray-100 mt-2">
+                  {metric.value}
+                </dd>
+                <dt className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  {metric.title}
+                </dt>
+              </motion.div>
+            );
+          })}
+        </motion.div>
       </div>
     </div>
   );

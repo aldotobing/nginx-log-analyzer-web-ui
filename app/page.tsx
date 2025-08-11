@@ -5,7 +5,7 @@ import { Dashboard } from "../components/Dashboard";
 import { DarkModeToggle } from "../components/DarkModeToggle";
 import { LogUploader } from "../components/LogUploader";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, Plus, Lock, FileText, BarChart3 } from "lucide-react";
+import { ChevronDown, Plus, Lock, FileText, BarChart3, RotateCw } from "lucide-react";
 
 export default function Home() {
   const [logData, setLogData] = useState(null);
@@ -51,6 +51,7 @@ export default function Home() {
     setLogData(null);
     setFileName("");
     setLoading(false);
+    window.location.reload();
   }, []);
 
   // Animation variants
@@ -134,11 +135,11 @@ export default function Home() {
                     onClick={handleNewLog}
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    whileHover={{ scale: 1.05 }}
+                    whileHover={{ scale: 1.05, y: -2 }}
                     whileTap={{ scale: 0.95 }}
-                    className="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg shadow-lg transition-all duration-200 flex items-center space-x-2 font-medium"
+                    className="px-5 py-2 font-medium text-white bg-gradient-to-r from-indigo-500 to-blue-600 rounded-full flex items-center space-x-2 transition-all duration-300 ease-in-out shadow-md hover:shadow-lg hover:shadow-blue-500/40 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-900"
                   >
-                    <Plus className="w-4 h-4" />
+                    <RotateCw className="w-4 h-4" />
                     <span className="hidden sm:inline">New Analysis</span>
                     <span className="sm:hidden">New</span>
                   </motion.button>
@@ -194,7 +195,6 @@ export default function Home() {
                           className="w-16 sm:w-20 lg:w-24 h-auto drop-shadow-lg"
                           loading="lazy"
                         />
-                        <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Nginx</span>
                       </div>
                       <div className="text-2xl text-gray-400 dark:text-gray-500">+</div>
                       <div className="flex flex-col items-center space-y-2">
@@ -204,7 +204,6 @@ export default function Home() {
                           className="w-16 sm:w-20 lg:w-24 h-auto drop-shadow-lg"
                           loading="lazy"
                         />
-                        <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Apache</span>
                       </div>
                     </motion.div>
                   </div>
