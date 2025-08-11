@@ -107,63 +107,7 @@ export function Dashboard({ logData = {} }: DashboardProps) {
     },
   };
 
-  // Quick stats component
-  const QuickStats = () => (
-    <motion.div
-      variants={itemVariants}
-      className="col-span-full mb-6"
-    >
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800/30">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Total Requests</p>
-              <p className="text-2xl font-bold text-blue-900 dark:text-blue-100">
-                {dashboardMetrics.totalRequests.toLocaleString()}
-              </p>
-            </div>
-            <Activity className="h-8 w-8 text-blue-500" />
-          </div>
-        </div>
 
-        <div className="bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 rounded-xl p-4 border border-red-200 dark:border-red-800/30">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-red-600 dark:text-red-400">Security Events</p>
-              <p className="text-2xl font-bold text-red-900 dark:text-red-100">
-                {dashboardMetrics.attackCount.toLocaleString()}
-              </p>
-            </div>
-            <AlertTriangle className="h-8 w-8 text-red-500" />
-          </div>
-        </div>
-
-        <div className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/20 dark:to-orange-800/20 rounded-xl p-4 border border-orange-200 dark:border-orange-800/30">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-orange-600 dark:text-orange-400">Suspicious IPs</p>
-              <p className="text-2xl font-bold text-orange-900 dark:text-orange-100">
-                {dashboardMetrics.suspiciousIpCount.toLocaleString()}
-              </p>
-            </div>
-            <Shield className="h-8 w-8 text-orange-500" />
-          </div>
-        </div>
-
-        <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-xl p-4 border border-green-200 dark:border-green-800/30">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-green-600 dark:text-green-400">Unique Visitors</p>
-              <p className="text-2xl font-bold text-green-900 dark:text-green-100">
-                {dashboardMetrics.uniqueIps.toLocaleString()}
-              </p>
-            </div>
-            <TrendingUp className="h-8 w-8 text-green-500" />
-          </div>
-        </div>
-      </div>
-    </motion.div>
-  );
 
   // Error boundary component
   const ChartWrapper = ({ children, title }: { children: React.ReactNode; title: string }) => (
@@ -235,17 +179,18 @@ export function Dashboard({ logData = {} }: DashboardProps) {
         initial="hidden"
         animate="visible"
       >
-        {/* Quick Stats */}
-        <QuickStats />
-
-        {/* Request Stats - Full width */}
+        {/* Request Stats Overview - Full width */}
         <motion.div
           className="lg:col-span-12"
           variants={itemVariants}
         >
-          <ChartWrapper title="Request Statistics">
-            <RequestStats data={requestStats} />
-          </ChartWrapper>
+          <RequestStats 
+            data={{
+              ...requestStats,
+              suspiciousIps: suspiciousIps ? Object.keys(suspiciousIps).length : 0,
+              totalAttackAttempts: recentAttacks?.length || requestStats?.totalAttackAttempts || 0
+            }} 
+          />
         </motion.div>
 
         {/* Traffic Over Time - Full width */}
