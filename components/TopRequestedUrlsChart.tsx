@@ -152,10 +152,12 @@ export function TopRequestedUrlsChart({ fetchData, className = "" }: TopRequeste
         beginAtZero: true,
         grid: {
           color: isDarkMode ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.05)",
-          drawBorder: false,
         },
         ticks: {
           color: isDarkMode ? "#9ca3af" : "#6b7280",
+        },
+        border: {
+          display: false,
         },
       },
     },
