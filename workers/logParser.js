@@ -54,14 +54,61 @@ self.onmessage = (e) => {
     "TRACE",
   ];
 
-  // Attack patterns
+  // Enhanced attack patterns with comprehensive security checks
   const attackPatterns = {
-    "SQL Injection":
-      /(?:--|;|\bUNION\b|\bSELECT\b|\bINSERT\b|\bDELETE\b|\bUPDATE\b|\bDROP\b|\bTABLE\b|%27|%2D%2D)/i,
-    XSS: /<script|javascript:|onerror=|onload=|eval\(|alert\(|document\.cookie/i,
-    "Command Injection": /\b(?:cat|ls|pwd|rm|wget|curl|bash)\b/i,
-    "Directory Traversal": /(?:\.\.\/){2,}|%2e{2,}/i,
-    "Brute Force": /login|signin|authenticate|password|admin/i,
+    "SQL Injection": new RegExp([
+      // More comprehensive SQLi patterns
+      "(?:%27|'|--|;|--\\s|/\\*.*?\\*/|#|%23)",  // Basic SQLi indicators
+      "\\b(?:UNION\\s+SELECT|SELECT\\s+.*?\\bFROM|INSERT\\s+INTO|DELETE\\s+FROM|UPDATE\\s+\\w+\\s+SET|DROP\\s+TABLE|CREATE\\s+TABLE|ALTER\\s+TABLE)\\b",
+      "\\b(?:OR|AND)\\s+['\\d]\\s*[=<>]",
+      "\\b(?:EXEC(?:UTE)?|EXEC\\s+SP_|XP_|sp_|xp_|WAITFOR\\s+DELAY)",
+      "\\b(?:CHAR\\(|CONCAT\\()"
+    ].join('|'), 'i'),
+
+    "XSS": new RegExp([
+      // More comprehensive XSS patterns
+      "<script[^>]*>",                // Script tags
+      "javascript:",                  // JavaScript URIs
+      "(?:on(?:load|error|click|mouse(?:over|out|move)|key(?:down|up|press)|submit|focus|blur|change))\\s*=",
+      "eval\\s*\\(",                  // eval()
+      "document\\.(?:cookie|location|write|URL|referrer)",
+      "<(?:iframe|img|svg|object|embed|frame|frameset|meta|link|form|input|button|textarea|select|option|style|base|body|html)",
+      "expression\\s*\\(",            // CSS expressions
+      "data:text(?:html|javascript)",  // Data URIs (fixed missing pipe)
+      "vbscript:"                     // VBScript
+    ].join('|'), 'i'),
+
+    "Command Injection": new RegExp([
+      // More comprehensive command injection patterns
+      "\\b(?:cat|ls|id|uname|whoami|pwd|rm|touch|wget|curl|scp|rsync|ftp|nc|ncat|nmap|ping|traceroute|telnet|ssh|bash|sh|zsh|dash|powershell|cmd\\.exe|cmd\\/c|\\|\\||&&|;)\\b",
+      "\\$\\s*\\(.*\\)",              // $(command)
+      "`.*`",                         // `command`
+      "\\|\\|\\s*\\w+",               // || command
+      "&&\\s*\\w+",                   // && command
+      "\\|\\s*\\w+",                  // | command
+      ">\\s*\\w+",                    // > file
+      "<\\s*\\w+",                    // < file
+      "\\b(?:exec|system|passthru|shell_exec|popen|proc_open|pcntl_exec)\\s*\\("
+    ].join('|'), 'i'),
+
+    "Directory Traversal": new RegExp(
+      // Path traversal sequences
+      '(?:\\.\\./|\\.\\.\\\\|%2e%2e%2f|%2e%2e/)' +  // ../ or ..\ or %2e%2e%2f or %2e%2e/
+      '|/etc/(?:passwd|shadow|group)' +  // Sensitive files
+      '|/proc/self/environ' +
+      '|(?:/|%2f|\\\\|%5c)(?:root|bin|home|usr|opt|etc|var|tmp)(?:/|%2f|\\|%5c|$)' +  // Sensitive directories
+      '|[a-zA-Z]:\\\\' +  // Windows drive paths
+      '|(?:wp-config|htaccess|web\\.config|passwd|shadow|group)(?:\\.(?:php|asp|aspx|jsp|pl|sh|py))?',  // Common config files
+      'i'
+    ),
+
+    "Brute Force": new RegExp([
+      // More comprehensive brute force patterns
+      "\\b(?:login|signin|sign-in|log-in|auth|authenticate|admin|administrator|root|sysadmin|password|passwd|pwd|secret|secure|security|account|user|username|credential|token|key|api[_-]?key)\\b",
+      "\\b(?:wp-|wp_|xmlrpc\\.php|admin-ajax\\.php|wp-login\\.php|wp-admin/)\\b",
+      "\\b(?:/admin/|/wp-admin/|/administrator/|/backend/|/control/|/cp/|/cpanel/|/manager/|/admincp/|/admin[1-9]|/admin10/)\\b",
+      "\\b(?:/login\\.(?:php|asp|aspx|jsp|do|pl|cgi|cfm|phtml|shtml|rb|py))\\b"
+    ].join('|'), 'i')
   };
 
   // Initialize IP stats
