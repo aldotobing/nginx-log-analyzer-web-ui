@@ -31,17 +31,22 @@ export function RequestStats({
   },
   className = ""
 }: RequestStatsProps) {
-  // Optimized counter with useSpring from framer-motion
+  // Enhanced counter with animation
   const AnimatedCounter = ({ value, duration = 2000, prefix = "", suffix = "" }: { 
     value: number; 
     duration?: number; 
     prefix?: string; 
     suffix?: string; 
   }) => {
-    const spring = useSpring(value, { 
-      duration,
+    const spring = useSpring(0, { 
+      duration: duration,
       bounce: 0.2
     });
+    
+    useEffect(() => {
+      spring.set(value);
+    }, [spring, value]);
+
     const display = useTransform(spring, (current) => 
       `${prefix}${Math.round(current).toLocaleString()}${suffix}`
     );
@@ -49,9 +54,14 @@ export function RequestStats({
     return (
       <motion.span 
         className="text-3xl lg:text-4xl font-bold tracking-tight"
-        initial={{ opacity: 0, scale: 0.8 }}
+        initial={{ opacity: 0, scale: 0.5 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.5 }}
+        transition={{ 
+          type: "spring", 
+          stiffness: 100, 
+          damping: 10,
+          duration: 0.5 
+        }}
       >
         {display}
       </motion.span>
@@ -86,8 +96,8 @@ export function RequestStats({
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.1,
-        delayChildren: 0.2
+        staggerChildren: 0.2,
+        delayChildren: 0.3
       }
     }
   };
@@ -95,16 +105,26 @@ export function RequestStats({
   const cardVariants = {
     hidden: { 
       opacity: 0, 
-      y: 30,
-      scale: 0.9
+      y: 50,
+      scale: 0.8
     },
     visible: { 
       opacity: 1, 
       y: 0,
       scale: 1,
       transition: {
-        duration: 0.6,
-        ease: "easeOut"
+        type: "spring",
+        stiffness: 100,
+        damping: 12,
+        duration: 0.7
+      }
+    },
+    hover: {
+      y: -10,
+      transition: {
+        type: "spring",
+        stiffness: 400,
+        damping: 10
       }
     }
   };
@@ -159,20 +179,46 @@ export function RequestStats({
   if (!metrics.hasData) {
     return (
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0, y: 30, scale: 0.9 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ 
+          type: "spring", 
+          stiffness: 100, 
+          damping: 12,
+          duration: 0.7 
+        }}
         className={`bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm rounded-2xl border border-gray-200 dark:border-gray-700/50 p-8 ${className}`}
       >
         <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
+          <motion.div 
+            className="w-16 h-16 mx-auto mb-4 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center"
+            initial={{ opacity: 0, scale: 0 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ 
+              type: "spring", 
+              stiffness: 150, 
+              damping: 10,
+              delay: 0.2 
+            }}
+          >
             <Activity className="h-8 w-8 text-gray-400" />
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+          </motion.div>
+          <motion.h3
+            className="text-lg font-semibold text-gray-900 dark:text-white mb-2"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
             No Request Data
-          </h3>
-          <p className="text-gray-600 dark:text-gray-400">
+          </motion.h3>
+          <motion.p
+            className="text-gray-600 dark:text-gray-400"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+          >
             Upload a log file to see request statistics and analytics.
-          </p>
+          </motion.p>
         </div>
       </motion.div>
     );
@@ -191,17 +237,28 @@ export function RequestStats({
           <div>
             <motion.h2
               className="text-2xl font-bold text-gray-900 dark:text-white"
-              initial={{ opacity: 0, x: -20 }}
+              initial={{ opacity: 0, x: -30 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6 }}
+              transition={{ 
+                type: "spring", 
+                stiffness: 100, 
+                damping: 12,
+                duration: 0.6 
+              }}
             >
               Request Overview
             </motion.h2>
             <motion.p
               className="text-gray-600 dark:text-gray-400 mt-1"
-              initial={{ opacity: 0, x: -20 }}
+              initial={{ opacity: 0, x: -30 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6, delay: 0.1 }}
+              transition={{ 
+                type: "spring", 
+                stiffness: 100, 
+                damping: 12,
+                duration: 0.6, 
+                delay: 0.1 
+              }}
             >
               Key metrics from your server logs
             </motion.p>
@@ -209,9 +266,19 @@ export function RequestStats({
           
           {/* Security Score Badge */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5, delay: 0.3 }}
+            initial={{ opacity: 0, scale: 0.5, rotate: -10 }}
+            animate={{ opacity: 1, scale: 1, rotate: 0 }}
+            transition={{ 
+              type: "spring", 
+              stiffness: 200, 
+              damping: 10,
+              duration: 0.5, 
+              delay: 0.4 
+            }}
+            whileHover={{ 
+              scale: 1.05,
+              transition: { duration: 0.2 }
+            }}
             className={`flex items-center space-x-2 px-3 py-1 rounded-full text-sm font-medium ${
               metrics.securityColor === 'green' 
                 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' 
@@ -276,7 +343,7 @@ export function RequestStats({
                 </div>
 
                 {/* Progress indicator */}
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gray-200 dark:bg-gray-700">
+                <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-200 dark:bg-gray-700">
                   <motion.div
                     className={`h-full bg-gradient-to-r ${
                       stat.color === 'blue' ? 'from-blue-400 to-blue-600' :
@@ -286,7 +353,13 @@ export function RequestStats({
                     }`}
                     initial={{ width: 0 }}
                     animate={{ width: '100%' }}
-                    transition={{ duration: 2, delay: index * 0.2 }}
+                    transition={{ 
+                      type: "spring",
+                      stiffness: 50,
+                      damping: 15,
+                      duration: 1.5, 
+                      delay: 0.5 + index * 0.1 
+                    }}
                   />
                 </div>
               </motion.div>
@@ -297,9 +370,19 @@ export function RequestStats({
         {/* Additional Insights */}
         {(data.avgRequestsPerHour || data.peakHour) && (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.8 }}
+            transition={{ 
+              type: "spring", 
+              stiffness: 100, 
+              damping: 12,
+              duration: 0.7,
+              delay: 1.0
+            }}
+            whileHover={{ 
+              y: -5,
+              transition: { duration: 0.2 }
+            }}
             className="mt-4 p-3 bg-gray-50/50 dark:bg-gray-800/30 rounded-xl border border-gray-200/50 dark:border-gray-700/50"
           >
             <div className="flex items-center justify-between text-sm">
