@@ -21,9 +21,9 @@ interface AttackDistributionChartProps {
 }
 
 const colorClasses = {
-  red: "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-300",
-  orange: "bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-300",
-  purple: "bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-300",
+  red: "bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-300",
+  orange: "bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-300",
+  purple: "bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300",
 };
 
 export function AttackDistributionChart({ data, className = "" }: AttackDistributionChartProps) {
@@ -94,13 +94,15 @@ export function AttackDistributionChart({ data, className = "" }: AttackDistribu
       {
         label: "Attack Count",
         data: attackCounts,
-        backgroundColor: isDarkMode ? "rgba(239, 68, 68, 0.3)" : "rgba(255, 99, 132, 0.2)",
-        borderColor: isDarkMode ? "rgba(239, 68, 68, 0.8)" : "rgba(255, 99, 132, 1)",
+        backgroundColor: isDarkMode ? "rgba(220, 38, 38, 0.4)" : "rgba(255, 99, 132, 0.2)",
+        borderColor: isDarkMode ? "rgba(239, 68, 68, 0.9)" : "rgba(255, 99, 132, 1)",
         borderWidth: 2,
         pointBackgroundColor: isDarkMode ? "rgba(239, 68, 68, 1)" : "rgba(255, 99, 132, 1)",
-        pointBorderColor: "#fff",
-        pointHoverBackgroundColor: "#fff",
+        pointBorderColor: isDarkMode ? "#1f2937" : "#fff",
+        pointHoverBackgroundColor: isDarkMode ? "#1f2937" : "#fff",
         pointHoverBorderColor: isDarkMode ? "rgba(239, 68, 68, 1)" : "rgba(255, 99, 132, 1)",
+        pointRadius: 4,
+        pointHoverRadius: 6,
       },
     ],
   };
@@ -121,6 +123,9 @@ export function AttackDistributionChart({ data, className = "" }: AttackDistribu
         padding: 15,
         cornerRadius: 12,
         displayColors: false,
+        titleFont: { size: 14, weight: 'bold' as const },
+        bodyFont: { size: 13, weight: 500 },
+        bodySpacing: 4,
         callbacks: {
           title: (ctx) => `Attack Type: ${ctx[0].label}`,
           label: (ctx) => {
@@ -134,10 +139,29 @@ export function AttackDistributionChart({ data, className = "" }: AttackDistribu
     scales: {
       r: {
         beginAtZero: true,
-        grid: { color: isDarkMode ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.05)" },
-        angleLines: { color: isDarkMode ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.05)" },
-        pointLabels: { color: isDarkMode ? "#cbd5e1" : "#475569", font: { size: 12, weight: 600 } },
-        ticks: { display: false, stepSize: Math.ceil(Math.max(...attackCounts) / 4) || 1 },
+        grid: { 
+          color: isDarkMode ? "rgba(75, 85, 99, 0.3)" : "rgba(0, 0, 0, 0.05)",
+          circular: true
+        },
+        angleLines: { 
+          color: isDarkMode ? "rgba(75, 85, 99, 0.3)" : "rgba(0, 0, 0, 0.05)",
+          lineWidth: 1.5
+        },
+        pointLabels: { 
+          color: isDarkMode ? "#E5E7EB" : "#374151", 
+          font: { 
+            size: 12, 
+            weight: 'bold' as const,
+            family: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif" 
+          },
+          padding: 10
+        },
+        ticks: { 
+          display: false, 
+          stepSize: Math.ceil(Math.max(...attackCounts) / 4) || 1,
+          backdropColor: isDarkMode ? 'rgba(17, 24, 39, 0.8)' : 'rgba(255, 255, 255, 0.8)'
+        },
+        backgroundColor: isDarkMode ? 'rgba(17, 24, 39, 0.3)' : 'rgba(255, 255, 255, 0.5)',
       },
     },
   };
@@ -172,7 +196,7 @@ export function AttackDistributionChart({ data, className = "" }: AttackDistribu
                 hidden: { y: 20, opacity: 0 },
                 visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 100 } },
               }}
-              className="bg-white/50 dark:bg-gray-800/50 p-3 rounded-lg transition-all duration-200 hover:shadow-md hover:-translate-y-1"
+              className="bg-white/60 dark:bg-gray-800/70 backdrop-blur-sm p-4 rounded-lg transition-all duration-200 hover:shadow-lg hover:-translate-y-1 border border-gray-200/50 dark:border-gray-700/50 hover:border-gray-300/50 dark:hover:border-gray-600/50"
             >
               <div>
                 <dt className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
