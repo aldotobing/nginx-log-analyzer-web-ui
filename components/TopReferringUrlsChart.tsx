@@ -152,7 +152,10 @@ export function TopReferringUrlsChart({ fetchData, className = "" }: TopReferrin
         beginAtZero: true,
         grid: {
           color: isDarkMode ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.05)",
-          drawBorder: false,
+          display: false
+        },
+        border: {
+          display: false
         },
         ticks: {
           color: isDarkMode ? "#9ca3af" : "#6b7280",
