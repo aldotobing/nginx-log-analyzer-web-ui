@@ -130,13 +130,7 @@ export function RecentAttacksTable({ data, className = "" }: RecentAttacksTableP
 
       <div className="p-6">
         <div className="overflow-x-auto custom-scrollbar">
-          <table className="min-w-full text-sm table-fixed">
-            <colgroup>
-              <col className="w-[25%]" />
-              <col className="w-[15%]" />
-              <col className="w-[20%]" />
-              <col className="w-[40%]" />
-            </colgroup>
+          <table className="min-w-full text-sm">
             <thead className="border-b border-gray-200/50 dark:border-gray-700/50">
               {table.getHeaderGroups().map(headerGroup => (
                 <tr key={headerGroup.id}>
@@ -176,7 +170,7 @@ export function RecentAttacksTable({ data, className = "" }: RecentAttacksTableP
         </div>
 
         {/* Pagination Controls */}
-        <div className="flex items-center justify-between mt-4">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4">
           <span className="text-xs text-gray-600 dark:text-gray-400">
             Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
           </span>

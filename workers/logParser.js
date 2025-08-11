@@ -103,11 +103,12 @@ self.onmessage = (e) => {
     ),
 
     "Brute Force": new RegExp([
-      // More comprehensive brute force patterns
-      "\\b(?:login|signin|sign-in|log-in|auth|authenticate|admin|administrator|root|sysadmin|password|passwd|pwd|secret|secure|security|account|user|username|credential|token|key|api[_-]?key)\\b",
+      // More specific brute force patterns - focusing on common attack paths
       "\\b(?:wp-|wp_|xmlrpc\\.php|admin-ajax\\.php|wp-login\\.php|wp-admin/)\\b",
       "\\b(?:/admin/|/wp-admin/|/administrator/|/backend/|/control/|/cp/|/cpanel/|/manager/|/admincp/|/admin[1-9]|/admin10/)\\b",
-      "\\b(?:/login\\.(?:php|asp|aspx|jsp|do|pl|cgi|cfm|phtml|shtml|rb|py))\\b"
+      "\\b(?:/login\\.(?:php|asp|aspx|jsp|do|pl|cgi|cfm|phtml|shtml|rb|py))\\b",
+      // Common brute force paths (more specific than just keywords)
+      "(?:/wp-login\\.php|/administrator/login|/admin/login|/user/login|/auth/login|/api/login|/v\\d+/login)"
     ].join('|'), 'i')
   };
 

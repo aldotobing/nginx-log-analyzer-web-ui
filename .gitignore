@@ -28,4 +28,4 @@ next-env.d.ts
 
 # nginx
 nginx.conf
-nginx-logs.txt
+# nginx-logs.txt

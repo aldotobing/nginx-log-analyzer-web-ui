@@ -10,6 +10,7 @@ import { RecentAttacksTable } from "./RecentAttacksTable";
 import TopIpAddressesChart from "./TopIpAddressChart";
 import TopReferringUrlsChart from "./TopReferringUrlsChart";
 import TopRequestedUrlsChart from "./TopRequestedUrlsChart";
+import TopSuspiciousIpsChart from "./TopSuspiciousIpsChart";
 
 interface SuspiciousIpData {
   attackCount: number;
@@ -156,16 +157,16 @@ export function Dashboard({ logData = {} }: DashboardProps) {
         animate="visible"
         className="mb-8"
       >
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h2 className="text-2xl lg:text-3xl font-bold text-gray-900 dark:text-white">
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
               Log Analytics Dashboard
             </h2>
             <p className="text-gray-600 dark:text-gray-400 mt-1">
               Comprehensive analysis of your server logs
             </p>
           </div>
-          <div className="hidden sm:flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
+          <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
             <span>Live Analysis</span>
           </div>
@@ -174,7 +175,7 @@ export function Dashboard({ logData = {} }: DashboardProps) {
 
       {/* Main Dashboard Grid */}
       <motion.div
-        className="grid grid-cols-1 lg:grid-cols-12 gap-6"
+        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-6"
         variants={containerVariants}
         initial="hidden"
         animate="visible"
@@ -205,7 +206,7 @@ export function Dashboard({ logData = {} }: DashboardProps) {
 
         {/* HTTP Methods and Status Codes */}
         <motion.div
-          className="lg:col-span-6"
+          className="md:col-span-1 lg:col-span-6"
           variants={itemVariants}
         >
           <ChartWrapper title="HTTP Methods">
@@ -214,7 +215,7 @@ export function Dashboard({ logData = {} }: DashboardProps) {
         </motion.div>
 
         <motion.div
-          className="lg:col-span-6"
+          className="md:col-span-1 lg:col-span-6"
           variants={itemVariants}
         >
           <ChartWrapper title="Status Codes">
@@ -224,7 +225,7 @@ export function Dashboard({ logData = {} }: DashboardProps) {
 
         {/* Attack Distribution and Top IPs */}
         <motion.div
-          className="lg:col-span-6"
+          className="md:col-span-1 lg:col-span-6"
           variants={itemVariants}
         >
           <ChartWrapper title="Attack Distribution">
@@ -233,17 +234,17 @@ export function Dashboard({ logData = {} }: DashboardProps) {
         </motion.div>
 
         <motion.div
-          className="lg:col-span-6"
+          className="md:col-span-1 lg:col-span-6"
           variants={itemVariants}
         >
           <ChartWrapper title="Top IP Addresses">
-            <TopIpAddressesChart data={topIp || {}} />
+            <TopIpAddressesChart data={topIp || {}} suspiciousIps={suspiciousIps || {}} />
           </ChartWrapper>
         </motion.div>
 
         {/* Top URLs */}
         <motion.div
-          className="lg:col-span-6"
+          className="md:col-span-1 lg:col-span-6"
           variants={itemVariants}
         >
           <ChartWrapper title="Top Requested URLs">
@@ -252,11 +253,21 @@ export function Dashboard({ logData = {} }: DashboardProps) {
         </motion.div>
 
         <motion.div
-          className="lg:col-span-6"
+          className="md:col-span-1 lg:col-span-6"
           variants={itemVariants}
         >
           <ChartWrapper title="Top Referring URLs">
             <TopReferringUrlsChart fetchData={async () => topReferrers || {}} />
+          </ChartWrapper>
+        </motion.div>
+
+        {/* Top Suspicious IPs - Full width */}
+        <motion.div
+          className="lg:col-span-12"
+          variants={itemVariants}
+        >
+          <ChartWrapper title="Top Suspicious IP Addresses">
+            <TopSuspiciousIpsChart data={suspiciousIps || {}} />
           </ChartWrapper>
         </motion.div>
 

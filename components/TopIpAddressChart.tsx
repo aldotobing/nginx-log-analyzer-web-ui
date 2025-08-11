@@ -26,6 +26,7 @@ ChartJS.register(
 
 interface TopIpAddressesChartProps {
   data: Record<string, number>;
+  suspiciousIps?: Record<string, any>;
   className?: string;
 }
 
@@ -35,7 +36,7 @@ interface IpInfo {
   flag?: string;
 }
 
-export function TopIpAddressesChart({ data, className = "" }: TopIpAddressesChartProps) {
+export function TopIpAddressesChart({ data, suspiciousIps = {}, className = "" }: TopIpAddressesChartProps) {
   const [ipInfo, setIpInfo] = useState<Record<string, IpInfo>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -119,11 +120,23 @@ export function TopIpAddressesChart({ data, className = "" }: TopIpAddressesChar
       {
         label: "Requests",
         data: sortedData.map(([, count]) => count),
-        backgroundColor: isDarkMode ? 'rgba(59, 130, 246, 0.5)' : 'rgba(59, 130, 246, 0.7)',
-        borderColor: 'rgba(59, 130, 246, 1)',
+        backgroundColor: sortedData.map(([ip]) => 
+          suspiciousIps[ip] 
+            ? (isDarkMode ? 'rgba(239, 68, 68, 0.5)' : 'rgba(239, 68, 68, 0.7)') 
+            : (isDarkMode ? 'rgba(59, 130, 246, 0.5)' : 'rgba(59, 130, 246, 0.7)')
+        ),
+        borderColor: sortedData.map(([ip]) => 
+          suspiciousIps[ip] 
+            ? 'rgba(239, 68, 68, 1)' 
+            : 'rgba(59, 130, 246, 1)'
+        ),
         borderWidth: 2,
         borderRadius: 6,
-        hoverBackgroundColor: 'rgba(59, 130, 246, 1)',
+        hoverBackgroundColor: sortedData.map(([ip]) => 
+          suspiciousIps[ip] 
+            ? 'rgba(239, 68, 68, 1)' 
+            : 'rgba(59, 130, 246, 1)'
+        ),
       },
     ],
   };
@@ -151,7 +164,8 @@ export function TopIpAddressesChart({ data, className = "" }: TopIpAddressesChar
         callbacks: {
           title: (items: TooltipItem<"bar">[]) => {
             const item = items[0];
-            return `IP: ${item.label}`;
+            const ip = item.label;
+            return suspiciousIps[ip] ? `IP: ${ip} (Suspicious)` : `IP: ${ip}`;
           },
           label: (context: TooltipItem<"bar">) => {
             const ip = context.label;
@@ -159,7 +173,7 @@ export function TopIpAddressesChart({ data, className = "" }: TopIpAddressesChar
             const location = ipInfo[ip] ? `${ipInfo[ip].city}, ${ipInfo[ip].country}` : 'Loading...';
             return [
               `Requests: ${count.toLocaleString()}`,
-              `Location: ${location}`
+              `Location: ${location}${suspiciousIps[ip] ? ' (Suspicious IP)' : ''}`
             ];
           },
         },
@@ -217,8 +231,19 @@ export function TopIpAddressesChart({ data, className = "" }: TopIpAddressesChar
       </div>
 
       <div className="p-6 space-y-6">
-        <div className="h-[250px] relative">
+        <div className="h-[200px] sm:h-[250px] relative">
           <Bar data={chartData} options={options} />
+        </div>
+
+        <div className="flex items-center justify-end gap-4 text-sm">
+          <div className="flex items-center">
+            <div className="w-4 h-4 bg-blue-500 rounded mr-2"></div>
+            <span className="text-gray-600 dark:text-gray-400">Normal IP</span>
+          </div>
+          <div className="flex items-center">
+            <div className="w-4 h-4 bg-red-500 rounded mr-2"></div>
+            <span className="text-gray-600 dark:text-gray-400">Suspicious IP</span>
+          </div>
         </div>
 
         <div className="flex flex-col pt-4 border-t border-gray-200/50 dark:border-gray-700/50">
@@ -239,7 +264,9 @@ export function TopIpAddressesChart({ data, className = "" }: TopIpAddressesChar
                 variants={itemVariants}
                 className="grid grid-cols-12 gap-2 items-center p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors"
               >
-                <div className="col-span-5 text-sm font-mono truncate text-gray-700 dark:text-gray-300">{ip}</div>
+                <div className={`col-span-5 text-sm font-mono truncate ${suspiciousIps[ip] ? 'text-red-600 dark:text-red-400 font-bold' : 'text-gray-700 dark:text-gray-300'}`}>
+                  {ip} {suspiciousIps[ip] && <span className="inline-block w-2 h-2 bg-red-500 rounded-full ml-1"></span>}
+                </div>
                 <div className="col-span-5 text-xs text-gray-600 dark:text-gray-400 truncate">
                   {isLoading ? (
                     <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-3/4"></div>

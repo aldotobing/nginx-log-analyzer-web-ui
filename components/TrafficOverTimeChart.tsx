@@ -334,7 +334,7 @@ export default function TrafficOverTimeChart({
     >
       {/* Header */}
       <div className="p-6 pb-4 border-b border-gray-200/50 dark:border-gray-700/50">
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center space-x-2">
               <BarChart3 className="h-5 w-5 text-blue-500" />
@@ -394,7 +394,7 @@ export default function TrafficOverTimeChart({
 
       {/* Metrics Grid */}
       <div className="p-6 pt-0">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {metrics.map((metric, index) => {
             const Icon = metric.icon;
             const colorClasses = {

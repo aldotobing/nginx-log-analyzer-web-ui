@@ -220,7 +220,7 @@ export function AttackDistributionChart({ data, className = "" }: AttackDistribu
       </div>
 
       <div className="p-6 space-y-6">
-        <div className="h-[250px] md:h-[300px] relative">
+        <div className="h-[200px] sm:h-[250px] md:h-[300px] relative">
           <Radar data={chartData} options={options} />
         </div>
         
