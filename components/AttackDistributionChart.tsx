@@ -165,7 +165,7 @@ export function AttackDistributionChart({ data, className = "" }: AttackDistribu
           animate="visible"
           variants={{ visible: { opacity: 1, transition: { staggerChildren: 0.1 } } }}
         >
-          {metrics.map(({ title, value, icon: Icon, color, subtitle }) => (
+          {metrics.map(({ title, value, color, subtitle }) => (
             <motion.div
               key={title}
               variants={{
@@ -174,15 +174,14 @@ export function AttackDistributionChart({ data, className = "" }: AttackDistribu
               }}
               className="bg-white/50 dark:bg-gray-800/50 p-3 rounded-lg transition-all duration-200 hover:shadow-md hover:-translate-y-1"
             >
-              <div className="flex items-start gap-2">
-                <Icon className={`h-5 w-5 mt-0.5 p-0.5 rounded-full ${colorClasses[color as keyof typeof colorClasses]}`} />
-                <div>
-                  <dt className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    {title}
-                  </dt>
-                  <dd className="text-lg font-bold text-gray-800 dark:text-gray-100">{value}</dd>
-                  {subtitle && <p className="text-[10px] text-gray-500 dark:text-gray-400">{subtitle}</p>}
-                </div>
+              <div>
+                <dt className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  {title}
+                </dt>
+                <dd className="text-base font-bold text-gray-800 dark:text-gray-100">{value}</dd>
+                {subtitle && (
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400">{subtitle}</p>
+                )}
               </div>
             </motion.div>
           ))}
