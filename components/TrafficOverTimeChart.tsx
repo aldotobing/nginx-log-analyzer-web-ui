@@ -330,7 +330,7 @@ export default function TrafficOverTimeChart({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6 }}
-      className={`bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-2xl border border-gray-200/50 dark:border-gray-700/50 shadow-lg ${className}`}
+      className={`bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-2xl ${className}`}
     >
       {/* Header */}
       <div className="p-6 pb-4 border-b border-gray-200/50 dark:border-gray-700/50">
