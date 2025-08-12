@@ -79,26 +79,51 @@ self.onmessage = (e) => {
     ].join('|'), 'i'),
 
     "Command Injection": new RegExp([
-      // More comprehensive command injection patterns
-      "\\b(?:cat|ls|uname|whoami|pwd|rm|touch|wget|curl|scp|rsync|ftp|nc|ncat|nmap|ping|traceroute|telnet|ssh|bash|sh|zsh|dash|powershell|cmd\\.exe|cmd\\/c|\\|\\||&&|;)\\b",
-      "\\$\s*\\(.*\\)",              // $(command)
-      "`.*`",                         // `command`
-      "\\|\\|\\s*\\w+",               // || command
-      "&&\\s*\\w+",                   // && command
-      "\\|\\s*\\w+",                  // | command
-      ">\\s*\\w+",                    // > file
-      "<\\s*\\w+",                    // < file
-      "\\b(?:exec|system|passthru|shell_exec|popen|proc_open|pcntl_exec)\\s*\\("
+      // Command substitution (very high confidence)
+      "\\$\\s*\\([^)]*\\)",                 // $(command)
+      "`[^`]+`",                            // `command`
+
+      // FIXED: Command chaining - require DOUBLE && or || (not single &)
+      "[;]\\s*[a-zA-Z][a-zA-Z0-9_-]*",      // ; command (semicolon only)
+      "\\|\\|\\s*[a-zA-Z][a-zA-Z0-9_-]*",   // || command (double pipe)
+      "&&\\s*[a-zA-Z][a-zA-Z0-9_-]*",       // && command (double ampersand)
+
+      // Pipe to commands (not just any pipe)
+      "\\|\\s*(?:grep|awk|sed|sort|head|tail|cut|tr)\\b",
+
+      // Redirection in command context (not in URLs)
+      "[^?&]\\s+[><]+\\s*(?:/|\\w+/)",      // redirection to paths (not after ? or &)
+
+      // Dangerous function calls
+      "\\b(?:exec|system|passthru|shell_exec|popen|proc_open|pcntl_exec)\\s*\\(",
+
+      // Explicit dangerous commands with parameters
+      "\\b(?:rm|del)\\s+[/-]",              // rm/del with flags
+      "\\b(?:wget|curl)\\s+https?://",       // network downloads
+      "\\b(?:nc|netcat)\\s+\\d",            // netcat with ports
+      "\\b(?:ssh|telnet)\\s+\\d",           // remote connections
+
+      // Commands with absolute paths (not in URL context)
+      "[^/\\w&?](?:cat|ls|pwd|whoami|uname)\\s+/",  // commands with absolute paths
+
+      // Script execution
+      "\\b(?:bash|sh|zsh|powershell|cmd)\\s+[/-]", // shells with parameters
+
+      // Environment variable access in suspicious context
+      "\\$\\{?\\w+\\}?\\s*[;&|]"            // $VAR followed by command separator
     ].join('|'), 'i'),
 
     "Directory Traversal": new RegExp(
-      // Path traversal sequences
-      '(?:\\.\\./|\\.\\.\\\\|%2e%2e%2f|%2e%2e/)' +  // ../ or ..\ or %2e%2e%2f or %2e%2e/
-      '|/etc/(?:passwd|shadow|group)' +  // Sensitive files
-      '|/proc/self/environ' +
-      '|(?:/|%2f|\\\\|%5c)(?:root|bin|home|usr|opt|etc|var|tmp)(?:/|%2f|\\|%5c|$)' +  // Sensitive directories
-      '|[a-zA-Z]:\\\\' +  // Windows drive paths
-      '|(?:wp-config|htaccess|web\\.config|passwd|shadow|group)(?:\\.(?:php|asp|aspx|jsp|pl|sh|py))?',  // Common config files
+      // Match directory traversal sequences with at least two levels up
+      '(?:^|/)(?:\\.{2}/){2,}' +
+      '|(?:^|\\\\)(?:\\.{2}\\\\){2,}' +  // Escaped backslashes for Windows paths
+      // Match encoded traversal sequences
+      '|(?:^|/)(?:%2e%2e[/\\\\]){2,}' +
+      // Match absolute paths to sensitive files
+      '|/etc/(?:passwd|shadow|group)(?:/|$|\\0)' +
+      '|/proc/self/environ(?:/|$|\\0)' +
+      // Match Windows-style absolute paths
+      '|^[a-zA-Z]:\\\\[^\\/]+',
       'i'
     ),
 
@@ -333,10 +358,10 @@ self.onmessage = (e) => {
     topReferrers:
       format === "nginx"
         ? Object.fromEntries(
-            Object.entries(stats.referrerCounts)
-              .sort(([, a], [, b]) => b - a)
-              .slice(0, 10)
-          )
+          Object.entries(stats.referrerCounts)
+            .sort(([, a], [, b]) => b - a)
+            .slice(0, 10)
+        )
         : {},
     topRequestedUrls: Object.fromEntries(
       Object.entries(stats.requestedUrlCounts)

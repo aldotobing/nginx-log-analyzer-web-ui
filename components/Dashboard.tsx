@@ -176,7 +176,7 @@ export function Dashboard({ logData: initialLogData = {}, parsedLines = [] }: Da
             <TopReferringUrlsChart data={topReferrers || {}} />
         </motion.div>
         <motion.div className="lg:col-span-12" variants={itemVariants}>
-            <TopSuspiciousIpsChart data={suspiciousIps || {}} />
+            <TopSuspiciousIpsChart data={suspiciousIps || {}} parsedLines={parsedLines} />
         </motion.div>
         <motion.div className="lg:col-span-12" variants={itemVariants}>
             <RecentAttacksTable data={recentAttacks || []} />

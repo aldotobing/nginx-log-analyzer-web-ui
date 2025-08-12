@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { 
   AlertTriangle, 
@@ -11,6 +11,14 @@ import {
   ExternalLink,
   Shield
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "./ui/dialog";
 
 interface SuspiciousIpData {
   attackCount: number;
@@ -25,15 +33,29 @@ interface SuspiciousIpData {
 
 interface TopSuspiciousIpsChartProps {
   data: Record<string, SuspiciousIpData>;
+  parsedLines: any[];
   className?: string;
 }
 
-export function TopSuspiciousIpsChart({ data, className = "" }: TopSuspiciousIpsChartProps) {
+export function TopSuspiciousIpsChart({ data, parsedLines, className = "" }: TopSuspiciousIpsChartProps) {
+  const [selectedIp, setSelectedIp] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   const sortedData = useMemo(() => {
     return Object.entries(data)
       .sort((a, b) => b[1].attackCount - a[1].attackCount)
       .slice(0, 10); // Limit to top 10
   }, [data]);
+
+  const attackLogs = useMemo(() => {
+    if (!selectedIp) return [];
+    return parsedLines.filter(line => line.ipAddress === selectedIp && line.attackType);
+  }, [selectedIp, parsedLines]);
+
+  const handleAttackCountClick = (ip: string) => {
+    setSelectedIp(ip);
+    setIsModalOpen(true);
+  };
 
   if (!data || Object.keys(data).length === 0) {
     return (
@@ -74,17 +96,12 @@ export function TopSuspiciousIpsChart({ data, className = "" }: TopSuspiciousIps
 
   const formatDate = (dateString: string): string => {
     try {
-      // Handle Nginx log timestamp format: "10/Aug/2025:12:47:01 +0700"
-      // Convert to a format that JavaScript can parse: "Aug 10 2025 12:47:01"
       const parts = dateString.replace(/\[|\]/g, "").split(':');
       if (parts.length >= 3) {
-        const datePart = parts[0]; // "10/Aug/2025"
-        const timePart = parts.slice(1, 4).join(':'); // "12:47:01"
-        
-        // Reformat to "Aug 10 2025 12:47:01"
+        const datePart = parts[0];
+        const timePart = parts.slice(1, 4).join(':');
         const [day, month, year] = datePart.split('/');
         const formattedDate = `${month} ${day} ${year} ${timePart}`;
-        
         const date = new Date(formattedDate);
         if (!isNaN(date.getTime())) {
           return date.toLocaleString();
@@ -163,7 +180,10 @@ export function TopSuspiciousIpsChart({ data, className = "" }: TopSuspiciousIps
                         </div>
                       </div>
                     </div>
-                    <div className="bg-gradient-to-r from-red-500 to-orange-500 px-4 py-2 rounded-lg flex items-center self-start shadow">
+                    <div 
+                      className="bg-gradient-to-r from-red-500 to-orange-500 px-4 py-2 rounded-lg flex items-center self-start shadow cursor-pointer"
+                      onClick={() => handleAttackCountClick(ip)}
+                    >
                       <AlertTriangle className="h-5 w-5 text-white mr-2" />
                       <span className="text-sm font-bold text-white">
                         {details.attackCount} attack{details.attackCount !== 1 ? 's' : ''}
@@ -247,7 +267,6 @@ export function TopSuspiciousIpsChart({ data, className = "" }: TopSuspiciousIps
                         </h4>
                         <div className="flex flex-wrap gap-2">
                           {Object.entries(details.statusCodes).map(([code, count]) => {
-                            // Color coding for status codes
                             let colorClass = "bg-gray-100 dark:bg-gray-700";
                             if (code.startsWith("2")) colorClass = "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200";
                             if (code.startsWith("4")) colorClass = "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200";
@@ -271,6 +290,40 @@ export function TopSuspiciousIpsChart({ data, className = "" }: TopSuspiciousIps
           </motion.div>
         </div>
       </div>
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Attack Logs for {selectedIp}</DialogTitle>
+            <DialogDescription>
+              Showing all detected attack logs for this IP address.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto">
+            <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                    <tr>
+                        <th scope="col" className="px-6 py-3">Timestamp</th>
+                        <th scope="col" className="px-6 py-3">Method</th>
+                        <th scope="col" className="px-6 py-3">Path</th>
+                        <th scope="col" className="px-6 py-3">Status</th>
+                        <th scope="col" className="px-6 py-3">Attack Type</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {attackLogs.map((log, index) => (
+                        <tr key={index} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+                            <td className="px-6 py-4">{formatDate(log.timestamp)}</td>
+                            <td className="px-6 py-4">{log.method}</td>
+                            <td className="px-6 py-4 break-all">{log.path}</td>
+                            <td className="px-6 py-4">{log.status}</td>
+                            <td className="px-6 py-4">{log.attackType}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
