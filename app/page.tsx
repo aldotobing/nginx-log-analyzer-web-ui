@@ -8,7 +8,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, Plus, Lock, FileText, BarChart3, RotateCw, Github, Twitter } from "lucide-react";
 
 export default function Home() {
-  const [logData, setLogData] = useState(null);
+  interface LogStats {
+    // Add specific properties of stats here
+    [key: string]: any;
+  }
+
+  const [logData, setLogData] = useState<LogStats | null>(null);
+  const [parsedLines, setParsedLines] = useState<any[]>([]);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -33,8 +39,15 @@ export default function Home() {
     }
   }, [isDarkMode, isLoaded]);
 
-  const handleLogParsed = useCallback((data: SetStateAction<null>) => {
-    setLogData(data);
+  const handleLogParsed = useCallback((data: { stats: LogStats; parsedLines: any[] }) => {
+    if (data && data.stats && data.parsedLines) {
+      setLogData(data.stats);
+      setParsedLines(data.parsedLines);
+    } else {
+      // Handle potential error or old data format
+      setLogData(data);
+      setParsedLines([]);
+    }
     setLoading(false);
   }, []);
 
@@ -261,7 +274,7 @@ export default function Home() {
                 >
                   <div className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
                     <div className="p-6 sm:p-8">
-                      <Dashboard logData={logData} />
+                      <Dashboard logData={logData} parsedLines={parsedLines} />
                     </div>
                   </div>
                 </motion.div>

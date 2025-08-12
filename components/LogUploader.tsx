@@ -11,8 +11,12 @@ import {
   CheckCircle,
 } from "lucide-react";
 
+interface LogStats {
+  [key: string]: any;
+}
+
 interface LogUploaderProps {
-  onLogParsed: (data: SetStateAction<null>) => void;
+  onLogParsed: (data: { stats: LogStats; parsedLines: any[] }) => void;
   onFileUpload: () => void;
 }
 

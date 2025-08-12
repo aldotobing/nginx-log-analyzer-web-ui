@@ -10,6 +10,8 @@ import {
   Tooltip,
   Legend,
   ChartOptions,
+  ChartEvent,
+  ActiveElement,
 } from "chart.js";
 import { ListChecks, CheckCircle, AlertCircle, ServerCrash, BarChart3 } from "lucide-react";
 
@@ -25,6 +27,8 @@ ChartJS.register(
 interface StatusCodesChartProps {
   data: Record<string, number>;
   className?: string;
+  onFilter?: (key: string, value: any) => void;
+  activeFilter?: string | null;
 }
 
 const STATUS_CODE_COLORS: Record<string, { base: string; hover: string }> = {
@@ -35,7 +39,7 @@ const STATUS_CODE_COLORS: Record<string, { base: string; hover: string }> = {
   "5xx": { base: "#a78bfa", hover: "#8b5cf6" }, // violet-400, violet-600
 };
 
-export function StatusCodesChart({ data, className = "" }: StatusCodesChartProps) {
+export function StatusCodesChart({ data, className = "", onFilter, activeFilter }: StatusCodesChartProps) {
   const [isDarkMode, setIsDarkMode] = useState(false);
 
   useEffect(() => {
@@ -65,11 +69,7 @@ export function StatusCodesChart({ data, className = "" }: StatusCodesChartProps
     };
 
     Object.entries(data).forEach(([code, count]) => {
-      const firstDigit = code.charAt(0);
-      const category = `${firstDigit}xx`;
-      if (category in statusCategories) {
-        statusCategories[category as keyof typeof statusCategories] += count;
-      }
+      statusCategories[code as keyof typeof statusCategories] += count;
     });
 
     const filteredCategories = Object.entries(statusCategories).filter(([, count]) => count > 0);
@@ -80,53 +80,21 @@ export function StatusCodesChart({ data, className = "" }: StatusCodesChartProps
     const successRate = total > 0 ? (successCount / total) * 100 : 0;
 
     const calculatedMetrics = [
-      {
-        title: "Success Rate",
-        value: `${successRate.toFixed(1)}%`,
-        icon: CheckCircle,
-        color: "green",
-      },
-      {
-        title: "Client Errors",
-        value: statusCategories["4xx"].toLocaleString(),
-        icon: AlertCircle,
-        color: "red",
-      },
-      {
-        title: "Server Errors",
-        value: statusCategories["5xx"].toLocaleString(),
-        icon: ServerCrash,
-        color: "purple",
-      },
-      {
-        title: "Total Requests",
-        value: total.toLocaleString(),
-        icon: BarChart3,
-        color: "blue",
-      },
+      { title: "Success Rate", value: `${successRate.toFixed(1)}%`, icon: CheckCircle, color: "green" },
+      { title: "Client Errors", value: statusCategories["4xx"].toLocaleString(), icon: AlertCircle, color: "red" },
+      { title: "Server Errors", value: statusCategories["5xx"].toLocaleString(), icon: ServerCrash, color: "purple" },
+      { title: "Total Requests", value: total.toLocaleString(), icon: BarChart3, color: "blue" },
     ];
 
-    return {
-      totalRequests: total,
-      sortedLabels: labels,
-      sortedData: values,
-      metrics: calculatedMetrics
-    };
+    return { totalRequests: total, sortedLabels: labels, sortedData: values, metrics: calculatedMetrics };
   }, [data]);
 
   if (totalRequests === 0) {
     return (
       <div className={`p-8 ${className}`}>
         <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
-            <ListChecks className="h-8 w-8 text-gray-400" />
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-            No Status Code Data
-          </h3>
-          <p className="text-gray-600 dark:text-gray-400">
-            Upload log files to see status code distributions.
-          </p>
+          <ListChecks className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+          <h3 className="text-lg font-semibold">No Status Code Data</h3>
         </div>
       </div>
     );
@@ -138,11 +106,11 @@ export function StatusCodesChart({ data, className = "" }: StatusCodesChartProps
       {
         label: "Request Count",
         data: sortedData,
-        backgroundColor: sortedLabels.map(label => STATUS_CODE_COLORS[label]?.base ?? '#9ca3af'),
-        borderColor: sortedLabels.map(label => STATUS_CODE_COLORS[label]?.hover ?? '#6b7280'),
+        backgroundColor: sortedLabels.map(label => activeFilter === label ? STATUS_CODE_COLORS[label]?.hover : STATUS_CODE_COLORS[label]?.base),
+        borderColor: sortedLabels.map(label => STATUS_CODE_COLORS[label]?.hover),
         borderWidth: 2,
         borderRadius: 8,
-        hoverBackgroundColor: sortedLabels.map(label => STATUS_CODE_COLORS[label]?.hover ?? '#6b7280'),
+        hoverBackgroundColor: sortedLabels.map(label => STATUS_CODE_COLORS[label]?.hover),
       },
     ],
   };
@@ -150,14 +118,23 @@ export function StatusCodesChart({ data, className = "" }: StatusCodesChartProps
   const options: ChartOptions<"bar"> = {
     responsive: true,
     maintainAspectRatio: false,
-    animation: {
-      duration: 1200,
-      easing: 'easeOutQuart'
+    onClick: (event: ChartEvent, elements: ActiveElement[], chart: ChartJS) => {
+      if (elements.length > 0 && onFilter && chart.data.labels) {
+        const elementIndex = elements[0].index;
+        const clickedLabel = chart.data.labels[elementIndex] as string;
+        
+        // If clicking the active filter, clear it. Otherwise, set it.
+        const newFilterValue = activeFilter === clickedLabel ? null : clickedLabel;
+        onFilter('status', newFilterValue);
+      }
     },
+    onHover: (event: ChartEvent, elements: ActiveElement[], chart: ChartJS) => {
+        const canvas = chart.canvas;
+        canvas.style.cursor = elements.length > 0 ? 'pointer' : 'default';
+    },
+    animation: { duration: 1200, easing: 'easeOutQuart' },
     plugins: {
-      legend: {
-        display: false,
-      },
+      legend: { display: false },
       tooltip: {
         enabled: true,
         backgroundColor: isDarkMode ? "rgba(17, 24, 39, 0.9)" : "rgba(255, 255, 255, 0.9)",
@@ -181,52 +158,19 @@ export function StatusCodesChart({ data, className = "" }: StatusCodesChartProps
     scales: {
       y: {
         beginAtZero: true,
-        grid: {
-          color: isDarkMode ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.05)",
-        },
-        border: {
-          display: false
-        },
-        ticks: {
-          color: isDarkMode ? "#9ca3af" : "#6b7280",
-          padding: 10,
-        },
+        grid: { color: isDarkMode ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.05)" },
+        border: { display: false },
+        ticks: { color: isDarkMode ? "#9ca3af" : "#6b7280", padding: 10 },
       },
       x: {
-        grid: {
-          display: false,
-        },
-        ticks: {
-          color: isDarkMode ? "#9ca3af" : "#6b7280",
-          font: {
-            weight: 600,
-          },
-        },
+        grid: { display: false },
+        ticks: { color: isDarkMode ? "#9ca3af" : "#6b7280", font: { weight: 600 } },
       },
     },
   };
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
-  };
-
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-      transition: {
-        type: 'spring',
-        stiffness: 100
-      }
-    }
-  };
+  const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
+  const itemVariants = { hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1, transition: { type: 'spring', stiffness: 100 } } };
 
   return (
     <div className={className}>

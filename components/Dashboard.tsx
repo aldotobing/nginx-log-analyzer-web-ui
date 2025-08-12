@@ -1,6 +1,7 @@
-import React, { useMemo } from "react";
+// components/Dashboard.tsx
+import React, { useMemo, useState, useCallback } from "react";
 import { motion } from "framer-motion";
-import { AlertTriangle, Activity, Shield, TrendingUp } from "lucide-react";
+import { AlertTriangle, Activity, XCircle } from "lucide-react";
 import { RequestStats } from "./RequestStats";
 import { HttpMethodsChart } from "./HttpMethodsChart";
 import { StatusCodesChart } from "./StatusCodesChart";
@@ -11,36 +12,53 @@ import TopIpAddressesChart from "./TopIpAddressChart";
 import TopReferringUrlsChart from "./TopReferringUrlsChart";
 import TopRequestedUrlsChart from "./TopRequestedUrlsChart";
 import TopSuspiciousIpsChart from "./TopSuspiciousIpsChart";
-
-interface SuspiciousIpData {
-  attackCount: number;
-  requestCount: number;
-  lastSeen: string;
-  uniquePaths: number;
-  uniqueUserAgents: number;
-  bandwidthUsage: number;
-  methods: Record<string, number>;
-  statusCodes: Record<string, number>;
-}
-
-interface LogData {
-  requestStats?: any;
-  httpMethods?: any;
-  statusCodes?: any;
-  attackDistribution?: any;
-  trafficOverTime?: any[];
-  recentAttacks?: any[];
-  topIp?: Record<string, number>;
-  topReferrers?: Record<string, number>;
-  topRequestedUrls?: Record<string, number>;
-  suspiciousIps?: Record<string, SuspiciousIpData>;
-}
+import { aggregateLogData } from "../lib/log-aggregator";
 
 interface DashboardProps {
-  logData?: LogData;
+  logData?: any;
+  parsedLines?: any[];
 }
 
-export function Dashboard({ logData = {} }: DashboardProps) {
+export function Dashboard({ logData: initialLogData = {}, parsedLines = [] }: DashboardProps) {
+  const [filters, setFilters] = useState<Record<string, any>>({});
+
+  const handleSetFilter = useCallback((key: string, value: any) => {
+    setFilters(prev => {
+      const newFilters = { ...prev };
+      if (value === null || value === undefined) {
+        delete newFilters[key];
+      } else {
+        newFilters[key] = value;
+      }
+      return newFilters;
+    });
+  }, []);
+
+  const clearFilters = () => {
+    setFilters({});
+  };
+
+  const filteredData = useMemo(() => {
+    if (Object.keys(filters).length === 0) {
+      return initialLogData;
+    }
+
+    const filteredLines = parsedLines.filter(line => {
+      return Object.entries(filters).every(([key, value]) => {
+        if (key === 'status') {
+          return line.status && line.status.startsWith(value.slice(0, 1));
+        }
+        if (key === 'ipAddress') {
+          return line.ipAddress === value;
+        }
+        // Add other filter conditions here as needed
+        return line[key] === value;
+      });
+    });
+
+    return aggregateLogData(filteredLines);
+  }, [filters, parsedLines, initialLogData]);
+
   const {
     requestStats,
     httpMethods,
@@ -52,111 +70,30 @@ export function Dashboard({ logData = {} }: DashboardProps) {
     topReferrers,
     topRequestedUrls,
     suspiciousIps,
-  } = logData;
+  } = filteredData || {};
 
-  // Memoized calculations for performance
-  const dashboardMetrics = useMemo(() => {
-    const totalRequests = requestStats?.totalRequests || 0;
-    const attackCount = recentAttacks?.length || 0;
-    const suspiciousIpCount = suspiciousIps ? Object.keys(suspiciousIps).length : 0;
-    const uniqueIps = topIp ? Object.keys(topIp).length : 0;
-
-    return {
-      totalRequests,
-      attackCount,
-      suspiciousIpCount,
-      uniqueIps,
-      hasData: totalRequests > 0,
-    };
-  }, [requestStats, recentAttacks, suspiciousIps, topIp]);
-
-  // Animation variants
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-        delayChildren: 0.1,
-      },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { 
-      opacity: 0, 
-      y: 30,
-      scale: 0.95
-    },
-    visible: { 
-      opacity: 1, 
-      y: 0, 
-      scale: 1,
-      transition: { 
-        duration: 0.5,
-        ease: "easeOut"
-      } 
-    },
-  };
-
-  const headerVariants = {
-    hidden: { opacity: 0, y: -20 },
-    visible: { 
-      opacity: 1, 
-      y: 0,
-      transition: { duration: 0.6, ease: "easeOut" }
-    },
-  };
+  const hasData = useMemo(() => {
+      return initialLogData && initialLogData.requestStats && initialLogData.requestStats.totalRequests > 0;
+  }, [initialLogData]);
 
 
-
-  // Error boundary component
-  const ChartWrapper = ({ children, title }: { children: React.ReactNode; title: string }) => (
-    <div className="bg-white dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700/50 shadow-sm hover:shadow-md transition-shadow duration-200">
-      <div className="p-1">
-        {React.isValidElement(children) ? children : (
-          <div className="flex items-center justify-center h-64 text-gray-500 dark:text-gray-400">
-            <div className="text-center">
-              <AlertTriangle className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">Unable to load {title}</p>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-
-  if (!dashboardMetrics.hasData) {
+  if (!hasData) {
     return (
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-center min-h-[400px]"
-      >
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
-            <Activity className="h-8 w-8 text-gray-400" />
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-            No Data Available
-          </h3>
-          <p className="text-gray-600 dark:text-gray-400 max-w-md">
-            Upload a log file to see detailed analytics and insights about your server traffic.
-          </p>
+          <Activity className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+          <h3 className="text-lg font-semibold">No Data Available</h3>
+          <p className="text-gray-500">Upload a log file to begin analysis.</p>
         </div>
       </motion.div>
     );
   }
+  
+  const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
+  const itemVariants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } };
 
   return (
     <div className="space-y-6">
-      {/* Dashboard Header */}
-      <motion.div
-        variants={headerVariants}
-        initial="hidden"
-        animate="visible"
-        className="mb-8"
-      >
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h2 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
@@ -171,114 +108,60 @@ export function Dashboard({ logData = {} }: DashboardProps) {
             <span>Live Analysis</span>
           </div>
         </div>
-      </motion.div>
 
-      {/* Main Dashboard Grid */}
+      {Object.keys(filters).length > 0 && (
+        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex items-center justify-between">
+          <div className="flex items-center gap-4">
+              <span className="font-semibold">Filters Active:</span>
+              <div className="flex gap-2 flex-wrap">
+                {Object.entries(filters).map(([key, value]) => (
+                  <span key={key} className="px-2 py-1 bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200 text-xs font-medium rounded-full">
+                    {key}: {value}
+                  </span>
+                ))}
+              </div>
+          </div>
+          <button onClick={clearFilters} className="p-1 text-blue-600 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-800/50 rounded-full">
+            <XCircle className="w-5 h-5" />
+          </button>
+        </motion.div>
+      )}
+
       <motion.div
         className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-6"
         variants={containerVariants}
         initial="hidden"
         animate="visible"
       >
-        {/* Request Stats Overview - Full width */}
-        <motion.div
-          className="lg:col-span-12"
-          variants={itemVariants}
-        >
-          <RequestStats 
-            data={{
-              ...requestStats,
-              suspiciousIps: suspiciousIps ? Object.keys(suspiciousIps).length : 0,
-              totalAttackAttempts: recentAttacks?.length || requestStats?.totalAttackAttempts || 0
-            }} 
-          />
+        <motion.div className="lg:col-span-12" variants={itemVariants}>
+          <RequestStats data={{...requestStats, suspiciousIps: suspiciousIps ? Object.keys(suspiciousIps).length : 0, totalAttackAttempts: recentAttacks?.length || 0 }} />
         </motion.div>
-
-        {/* Traffic Over Time - Full width */}
-        <motion.div
-          className="lg:col-span-12"
-          variants={itemVariants}
-        >
-          <ChartWrapper title="Traffic Over Time">
+        <motion.div className="lg:col-span-12" variants={itemVariants}>
             <TrafficOverTimeChart data={trafficOverTime || []} />
-          </ChartWrapper>
         </motion.div>
-
-        {/* HTTP Methods and Status Codes */}
-        <motion.div
-          className="md:col-span-1 lg:col-span-6"
-          variants={itemVariants}
-        >
-          <ChartWrapper title="HTTP Methods">
-            <HttpMethodsChart data={httpMethods || {}} />
-          </ChartWrapper>
+        <motion.div className="md:col-span-1 lg:col-span-6" variants={itemVariants}>
+            <HttpMethodsChart data={httpMethods || {}} onFilter={handleSetFilter} activeFilter={filters?.method} />
         </motion.div>
-
-        <motion.div
-          className="md:col-span-1 lg:col-span-6"
-          variants={itemVariants}
-        >
-          <ChartWrapper title="Status Codes">
-            <StatusCodesChart data={statusCodes || {}} />
-          </ChartWrapper>
+        <motion.div className="md:col-span-1 lg:col-span-6" variants={itemVariants}>
+            <StatusCodesChart data={statusCodes || {}} onFilter={handleSetFilter} activeFilter={filters?.status} />
         </motion.div>
-
-        {/* Attack Distribution and Top IPs */}
-        <motion.div
-          className="md:col-span-1 lg:col-span-6"
-          variants={itemVariants}
-        >
-          <ChartWrapper title="Attack Distribution">
-            <AttackDistributionChart data={attackDistribution || {}} />
-          </ChartWrapper>
+        <motion.div className="md:col-span-1 lg:col-span-6" variants={itemVariants}>
+            <AttackDistributionChart data={attackDistribution || {}} onFilter={handleSetFilter} activeFilter={filters?.attackType} />
         </motion.div>
-
-        <motion.div
-          className="md:col-span-1 lg:col-span-6"
-          variants={itemVariants}
-        >
-          <ChartWrapper title="Top IP Addresses">
-            <TopIpAddressesChart data={topIp || {}} suspiciousIps={suspiciousIps || {}} />
-          </ChartWrapper>
+        <motion.div className="md:col-span-1 lg:col-span-6" variants={itemVariants}>
+            <TopIpAddressesChart data={topIp || {}} suspiciousIps={suspiciousIps || {}} onFilter={handleSetFilter} activeFilter={filters?.ipAddress} />
         </motion.div>
-
-        {/* Top URLs */}
-        <motion.div
-          className="md:col-span-1 lg:col-span-6"
-          variants={itemVariants}
-        >
-          <ChartWrapper title="Top Requested URLs">
-            <TopRequestedUrlsChart fetchData={async () => topRequestedUrls || {}} />
-          </ChartWrapper>
+        <motion.div className="md:col-span-1 lg:col-span-6" variants={itemVariants}>
+            <TopRequestedUrlsChart data={topRequestedUrls} />
         </motion.div>
-
-        <motion.div
-          className="md:col-span-1 lg:col-span-6"
-          variants={itemVariants}
-        >
-          <ChartWrapper title="Top Referring URLs">
-            <TopReferringUrlsChart fetchData={async () => topReferrers || {}} />
-          </ChartWrapper>
+        <motion.div className="md:col-span-1 lg:col-span-6" variants={itemVariants}>
+            <TopReferringUrlsChart data={topReferrers || {}} />
         </motion.div>
-
-        {/* Top Suspicious IPs - Full width */}
-        <motion.div
-          className="lg:col-span-12"
-          variants={itemVariants}
-        >
-          <ChartWrapper title="Top Suspicious IP Addresses">
+        <motion.div className="lg:col-span-12" variants={itemVariants}>
             <TopSuspiciousIpsChart data={suspiciousIps || {}} />
-          </ChartWrapper>
         </motion.div>
-
-        {/* Recent Attacks Table - Full width */}
-        <motion.div
-          className="lg:col-span-12"
-          variants={itemVariants}
-        >
-          <ChartWrapper title="Recent Security Events">
+        <motion.div className="lg:col-span-12" variants={itemVariants}>
             <RecentAttacksTable data={recentAttacks || []} />
-          </ChartWrapper>
         </motion.div>
       </motion.div>
     </div>

@@ -186,6 +186,7 @@ self.onmessage = (e) => {
   const totalLines = lines.length;
   let validLines = 0;
 
+  const parsedLines = [];
   lines.forEach((line, index) => {
     if (index % 1000 === 0) {
       self.postMessage({ progress: Math.round((index / totalLines) * 100) });
@@ -254,12 +255,13 @@ self.onmessage = (e) => {
       // Skip invalid timestamps
     }
 
-    // Check for attacks
+    let attackType = null;
     for (const [type, pattern] of Object.entries(attackPatterns)) {
       if (pattern.test(path)) {
         stats.attackDistribution[type]++;
         stats.requestStats.totalAttackAttempts++;
         stats.ipStats.attackCounts[ipAddress]++;
+        attackType = type;
         stats.recentAttacks.push({
           timestamp,
           ipAddress,
@@ -270,6 +272,11 @@ self.onmessage = (e) => {
         break;
       }
     }
+
+    parsedLines.push({
+      ...parsedLine,
+      attackType,
+    });
 
     try {
       const timestampStr = timestamp.replace(/\[|\]/g, "");
@@ -355,5 +362,5 @@ self.onmessage = (e) => {
     recentAttacks: stats.recentAttacks.slice(-100).reverse(),
   };
 
-  self.postMessage(finalStats);
+  self.postMessage({ stats: finalStats, parsedLines });
 };

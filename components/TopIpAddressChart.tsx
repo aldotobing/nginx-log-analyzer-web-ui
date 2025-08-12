@@ -11,7 +11,8 @@ import {
   Legend,
   ChartOptions,
   TooltipItem,
-  TooltipModel,
+  ChartEvent,
+  ActiveElement,
 } from "chart.js";
 import { MapPin } from "lucide-react";
 
@@ -28,6 +29,8 @@ interface TopIpAddressesChartProps {
   data: Record<string, number>;
   suspiciousIps?: Record<string, any>;
   className?: string;
+  onFilter?: (key: string, value: any) => void;
+  activeFilter?: string | null;
 }
 
 interface IpInfo {
@@ -36,7 +39,7 @@ interface IpInfo {
   flag?: string;
 }
 
-export function TopIpAddressesChart({ data, suspiciousIps = {}, className = "" }: TopIpAddressesChartProps) {
+export function TopIpAddressesChart({ data, suspiciousIps = {}, className = "", onFilter, activeFilter }: TopIpAddressesChartProps) {
   const [ipInfo, setIpInfo] = useState<Record<string, IpInfo>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -64,7 +67,6 @@ export function TopIpAddressesChart({ data, suspiciousIps = {}, className = "" }
         if (!response.ok) throw new Error('Failed to fetch');
         const json = await response.json();
         
-        // Map country code to full country name if needed
         const countryName = new Intl.DisplayNames(['en'], { type: 'region' }).of(json.country) || json.region || "Unknown";
         
         return {
@@ -104,15 +106,8 @@ export function TopIpAddressesChart({ data, suspiciousIps = {}, className = "" }
     return (
       <div className={`p-8 ${className}`}>
         <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
-            <MapPin className="h-8 w-8 text-gray-400" />
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-            No IP Address Data
-          </h3>
-          <p className="text-gray-600 dark:text-gray-400">
-            Upload logs to see top IP addresses.
-          </p>
+          <MapPin className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+          <h3 className="text-lg font-semibold">No IP Address Data</h3>
         </div>
       </div>
     );
@@ -125,9 +120,11 @@ export function TopIpAddressesChart({ data, suspiciousIps = {}, className = "" }
         label: "Requests",
         data: sortedData.map(([, count]) => count),
         backgroundColor: sortedData.map(([ip]) => 
-          suspiciousIps[ip] 
-            ? (isDarkMode ? 'rgba(239, 68, 68, 0.5)' : 'rgba(239, 68, 68, 0.7)') 
-            : (isDarkMode ? 'rgba(59, 130, 246, 0.5)' : 'rgba(59, 130, 246, 0.7)')
+          activeFilter === ip 
+            ? (suspiciousIps[ip] ? 'rgba(220, 38, 38, 1)' : 'rgba(37, 99, 235, 1)')
+            : (suspiciousIps[ip] 
+              ? (isDarkMode ? 'rgba(239, 68, 68, 0.5)' : 'rgba(239, 68, 68, 0.7)') 
+              : (isDarkMode ? 'rgba(59, 130, 246, 0.5)' : 'rgba(59, 130, 246, 0.7)'))
         ),
         borderColor: sortedData.map(([ip]) => 
           suspiciousIps[ip] 
@@ -149,10 +146,23 @@ export function TopIpAddressesChart({ data, suspiciousIps = {}, className = "" }
     indexAxis: 'y' as const,
     responsive: true,
     maintainAspectRatio: false,
-    animation: {
-      duration: 1200,
-      easing: 'easeOutQuart'
+    onClick: (event: ChartEvent, elements: ActiveElement[], chart: ChartJS) => {
+      if (elements.length > 0 && onFilter && chart.data.labels) {
+        const elementIndex = elements[0].index;
+        const labels = chart.data.labels as string[];
+        const clickedLabel = labels[elementIndex];
+        
+        if (clickedLabel !== undefined) {
+          const newFilterValue = activeFilter === clickedLabel ? null : clickedLabel;
+          onFilter('ipAddress', newFilterValue);
+        }
+      }
     },
+    onHover: (event: ChartEvent, elements: ActiveElement[], chart: ChartJS) => {
+        const canvas = chart.canvas;
+        canvas.style.cursor = elements.length > 0 ? 'pointer' : 'default';
+    },
+    animation: { duration: 1200, easing: 'easeOutQuart' },
     plugins: {
       legend: { display: false },
       tooltip: {
@@ -186,40 +196,15 @@ export function TopIpAddressesChart({ data, suspiciousIps = {}, className = "" }
     scales: {
       y: {
         grid: { display: false },
-        ticks: {
-          color: isDarkMode ? "#9ca3af" : "#6b7280",
-          font: { size: 10 },
-        },
+        ticks: { color: isDarkMode ? "#9ca3af" : "#6b7280", font: { size: 10 } },
       },
       x: {
         beginAtZero: true,
-        grid: {
-          color: isDarkMode ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.05)",
-        },
-        ticks: {
-          color: isDarkMode ? "#9ca3af" : "#6b7280",
-        },
-        border: {
-          display: false
-        }
+        grid: { color: isDarkMode ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.05)" },
+        ticks: { color: isDarkMode ? "#9ca3af" : "#6b7280" },
+        border: { display: false }
       },
     },
-  };
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { staggerChildren: 0.05 }
-    }
-  };
-
-  const itemVariants = {
-    hidden: { x: -10, opacity: 0 },
-    visible: {
-      x: 0,
-      opacity: 1,
-    }
   };
 
   return (
@@ -230,7 +215,7 @@ export function TopIpAddressesChart({ data, suspiciousIps = {}, className = "" }
           <span>Top IP Addresses</span>
         </h2>
         <p className="text-gray-600 dark:text-gray-400 mt-1">
-          Top IP addresses by request volume.
+          Top IP addresses by request volume. Click to filter.
         </p>
       </div>
 
@@ -240,51 +225,8 @@ export function TopIpAddressesChart({ data, suspiciousIps = {}, className = "" }
         </div>
 
         <div className="flex items-center justify-end gap-4 text-sm">
-          <div className="flex items-center">
-            <div className="w-4 h-4 bg-blue-500 rounded mr-2"></div>
-            <span className="text-gray-600 dark:text-gray-400">Normal IP</span>
-          </div>
-          <div className="flex items-center">
-            <div className="w-4 h-4 bg-red-500 rounded mr-2"></div>
-            <span className="text-gray-600 dark:text-gray-400">Suspicious IP</span>
-          </div>
-        </div>
-
-        <div className="flex flex-col pt-4 border-t border-gray-200/50 dark:border-gray-700/50">
-          <div className="grid grid-cols-12 gap-2 px-2 pb-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">
-            <div className="col-span-5">IP Address</div>
-            <div className="col-span-5">Location</div>
-            <div className="col-span-2 text-right">Requests</div>
-          </div>
-          <motion.div
-            className="flex flex-col mt-2 space-y-1"
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-          >
-            {sortedData.map(([ip, count]) => (
-              <motion.div
-                key={ip}
-                variants={itemVariants}
-                className="grid grid-cols-12 gap-2 items-center p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors"
-              >
-                <div className={`col-span-5 text-sm font-mono truncate ${suspiciousIps[ip] ? 'text-red-600 dark:text-red-400 font-bold' : 'text-gray-700 dark:text-gray-300'}`}>
-                  {ip} {suspiciousIps[ip] && <span className="inline-block w-2 h-2 bg-red-500 rounded-full ml-1"></span>}
-                </div>
-                <div className="col-span-5 text-xs text-gray-600 dark:text-gray-400 truncate">
-                  {isLoading ? (
-                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse w-3/4"></div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      {ipInfo[ip]?.flag && <img src={ipInfo[ip].flag} alt={ipInfo[ip].country} className="w-4 h-3" />}
-                      <span>{ipInfo[ip] ? `${ipInfo[ip].city}, ${ipInfo[ip].country}` : 'N/A'}</span>
-                    </div>
-                  )}
-                </div>
-                <div className="col-span-2 text-sm font-medium text-right text-gray-800 dark:text-gray-200">{count.toLocaleString()}</div>
-              </motion.div>
-            ))}
-          </motion.div>
+          <div className="flex items-center"><div className="w-4 h-4 bg-blue-500 rounded mr-2"></div><span className="text-gray-600 dark:text-gray-400">Normal IP</span></div>
+          <div className="flex items-center"><div className="w-4 h-4 bg-red-500 rounded mr-2"></div><span className="text-gray-600 dark:text-gray-400">Suspicious IP</span></div>
         </div>
       </div>
     </div>

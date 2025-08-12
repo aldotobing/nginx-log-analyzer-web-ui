@@ -10,6 +10,8 @@ import {
   Tooltip,
   Legend,
   ChartOptions,
+  ChartEvent,
+  ActiveElement,
 } from "chart.js";
 import { ShieldAlert, Zap, ListTree, ShieldCheck } from "lucide-react";
 
@@ -18,15 +20,16 @@ ChartJS.register(RadialLinearScale, PointElement, LineElement, Filler, Tooltip, 
 interface AttackDistributionChartProps {
   data: { [key: string]: number };
   className?: string;
+  onFilter?: (key: string, value: string | null) => void;
+  activeFilter?: string | null;
 }
 
-const colorClasses = {
-  red: "bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-300",
-  orange: "bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-300",
-  purple: "bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300",
-};
-
-export function AttackDistributionChart({ data, className = "" }: AttackDistributionChartProps) {
+export function AttackDistributionChart({ 
+  data, 
+  className = "", 
+  onFilter, 
+  activeFilter 
+}: AttackDistributionChartProps) {
   const [isDarkMode, setIsDarkMode] = useState(false);
 
   useEffect(() => {
@@ -39,7 +42,7 @@ export function AttackDistributionChart({ data, className = "" }: AttackDistribu
 
   const { totalAttacks, attackLabels, attackCounts, metrics } = useMemo(() => {
     const total = Object.values(data).reduce((sum, value) => sum + (Number(value) || 0), 0);
-    if (!total) return { totalAttacks: 0, attackLabels: [], attackCounts: [], metrics: [] };
+    if (!data || total === 0) return { totalAttacks: 0, attackLabels: [], attackCounts: [], metrics: [] };
 
     const sorted = Object.entries(data).sort(([, a], [, b]) => b - a);
     const labels = sorted.map(([key]) => key);
@@ -74,63 +77,57 @@ export function AttackDistributionChart({ data, className = "" }: AttackDistribu
     };
   }, [data]);
 
-  if (!totalAttacks) {
-    return (
-      <div className={`p-8 ${className}`}>
-        <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
-            <ShieldAlert className="h-8 w-8 text-gray-400" />
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No Attack Data</h3>
-          <p className="text-gray-600 dark:text-gray-400">No security threats detected in the logs.</p>
-        </div>
-      </div>
-    );
-  }
-
-  const chartData = {
+  const chartData = useMemo(() => ({
     labels: attackLabels,
     datasets: [
       {
-        label: "Attack Count",
+        label: 'Attack Count',
         data: attackCounts,
-        backgroundColor: isDarkMode ? "rgba(220, 38, 38, 0.4)" : "rgba(255, 99, 132, 0.2)",
-        borderColor: isDarkMode ? "rgba(239, 68, 68, 0.9)" : "rgba(255, 99, 132, 1)",
+        backgroundColor: 'rgba(239, 68, 68, 0.2)',
+        borderColor: 'rgba(239, 68, 68, 1)',
         borderWidth: 2,
-        pointBackgroundColor: isDarkMode ? "rgba(239, 68, 68, 1)" : "rgba(255, 99, 132, 1)",
-        pointBorderColor: isDarkMode ? "#1f2937" : "#fff",
-        pointHoverBackgroundColor: isDarkMode ? "#1f2937" : "#fff",
-        pointHoverBorderColor: isDarkMode ? "rgba(239, 68, 68, 1)" : "rgba(255, 99, 132, 1)",
-        pointRadius: 4,
-        pointHoverRadius: 6,
+        pointBackgroundColor: 'rgba(239, 68, 68, 1)',
+        pointBorderColor: '#fff',
+        pointHoverBackgroundColor: '#fff',
+        pointHoverBorderColor: 'rgba(239, 68, 68, 1)',
       },
     ],
-  };
+  }), [attackLabels, attackCounts]);
 
-  const options: ChartOptions<"radar"> = {
+  const options: ChartOptions<"radar"> = useMemo(() => ({
     responsive: true,
     maintainAspectRatio: false,
+    onClick: (event: ChartEvent, elements: ActiveElement[], chart: ChartJS) => {
+      if (elements.length > 0 && onFilter) {
+        const elementIndex = elements[0].index;
+        const clickedLabel = chart.data.labels?.[elementIndex] as string;
+        
+        const newFilterValue = activeFilter === clickedLabel ? null : clickedLabel;
+        onFilter('attackType', newFilterValue);
+      }
+    },
+    onHover: (event: ChartEvent, elements: ActiveElement[], chart: ChartJS) => {
+      const canvas = chart.canvas;
+      canvas.style.cursor = elements.length > 0 ? 'pointer' : 'default';
+    },
     animation: { duration: 1200, easing: "easeOutQuart" },
     plugins: {
       legend: { display: false },
       tooltip: {
         enabled: true,
-        backgroundColor: isDarkMode ? "rgba(17, 24, 39, 0.9)" : "rgba(255, 255, 255, 0.9)",
-        titleColor: isDarkMode ? "#F9FAFB" : "#111827",
-        bodyColor: isDarkMode ? "#D1D5DB" : "#374151",
-        borderColor: isDarkMode ? "rgba(209, 213, 219, 0.2)" : "rgba(0, 0, 0, 0.1)",
+        backgroundColor: isDarkMode ? 'rgba(17, 24, 39, 0.9)' : 'rgba(255, 255, 255, 0.9)',
+        titleColor: isDarkMode ? '#F9FAFB' : '#111827',
+        bodyColor: isDarkMode ? '#D1D5DB' : '#374151',
+        borderColor: isDarkMode ? 'rgba(209, 213, 219, 0.2)' : 'rgba(0, 0, 0, 0.1)',
         borderWidth: 1,
         padding: 15,
         cornerRadius: 12,
         displayColors: false,
-        titleFont: { size: 14, weight: 'bold' as const },
-        bodyFont: { size: 13, weight: 500 },
-        bodySpacing: 4,
         callbacks: {
           title: (ctx) => `Attack Type: ${ctx[0].label}`,
           label: (ctx) => {
             const count = ctx.raw as number;
-            const pct = ((count / totalAttacks) * 100).toFixed(1);
+            const pct = totalAttacks > 0 ? ((count / totalAttacks) * 100).toFixed(1) : 0;
             return `${count.toLocaleString()} events (${pct}%)`;
           },
         },
@@ -139,32 +136,29 @@ export function AttackDistributionChart({ data, className = "" }: AttackDistribu
     scales: {
       r: {
         beginAtZero: true,
-        grid: { 
-          color: isDarkMode ? "rgba(75, 85, 99, 0.3)" : "rgba(0, 0, 0, 0.05)",
-          circular: true
-        },
-        angleLines: { 
-          color: isDarkMode ? "rgba(75, 85, 99, 0.3)" : "rgba(0, 0, 0, 0.05)",
-          lineWidth: 1.5
-        },
+        grid: { color: isDarkMode ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.05)" },
+        angleLines: { color: isDarkMode ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.05)" },
         pointLabels: { 
           color: isDarkMode ? "#E5E7EB" : "#374151", 
-          font: { 
-            size: 12, 
-            weight: 'bold' as const,
-            family: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif" 
-          },
-          padding: 10
+          font: { size: 12, weight: 'bold' as const },
+          padding: 15,
         },
-        ticks: { 
-          display: false, 
-          stepSize: Math.ceil(Math.max(...attackCounts) / 4) || 1,
-          backdropColor: isDarkMode ? 'rgba(17, 24, 39, 0.8)' : 'rgba(255, 255, 255, 0.8)'
-        },
-        backgroundColor: isDarkMode ? 'rgba(17, 24, 39, 0.3)' : 'rgba(255, 255, 255, 0.5)',
+        ticks: { display: false, stepSize: attackCounts.length > 0 ? Math.ceil(Math.max(...attackCounts) / 4) : 1 },
       },
     },
-  };
+  }), [isDarkMode, onFilter, activeFilter, attackLabels, attackCounts, totalAttacks]);
+
+  if (!totalAttacks) {
+    return (
+      <div className={`p-8 ${className}`}>
+        <div className="text-center">
+          <ShieldAlert className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+          <h3 className="text-lg font-semibold">No Attack Data</h3>
+          <p className="text-gray-500">No security threats detected for this filter.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={className}>
@@ -174,7 +168,7 @@ export function AttackDistributionChart({ data, className = "" }: AttackDistribu
           <span>Attack Distribution</span>
         </h2>
         <p className="text-gray-600 dark:text-gray-400 mt-1">
-          Distribution of {totalAttacks.toLocaleString()} detected security threats.
+          Distribution of {totalAttacks.toLocaleString()} threats. Click a point to filter.
         </p>
       </div>
 
@@ -182,34 +176,6 @@ export function AttackDistributionChart({ data, className = "" }: AttackDistribu
         <div className="h-[200px] sm:h-[250px] md:h-[300px] relative">
           <Radar data={chartData} options={options} />
         </div>
-
-        <motion.div
-          className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-gray-200/50 dark:border-gray-700/50"
-          initial="hidden"
-          animate="visible"
-          variants={{ visible: { opacity: 1, transition: { staggerChildren: 0.1 } } }}
-        >
-          {metrics.map(({ title, value, color, subtitle }) => (
-            <motion.div
-              key={title}
-              variants={{
-                hidden: { y: 20, opacity: 0 },
-                visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 100 } },
-              }}
-              className="bg-white/60 dark:bg-gray-800/70 backdrop-blur-sm p-4 rounded-lg transition-all duration-200 hover:shadow-lg hover:-translate-y-1 border border-gray-200/50 dark:border-gray-700/50 hover:border-gray-300/50 dark:hover:border-gray-600/50"
-            >
-              <div>
-                <dt className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  {title}
-                </dt>
-                <dd className="text-base font-bold text-gray-800 dark:text-gray-100">{value}</dd>
-                {subtitle && (
-                  <p className="text-[10px] text-gray-500 dark:text-gray-400">{subtitle}</p>
-                )}
-              </div>
-            </motion.div>
-          ))}
-        </motion.div>
       </div>
     </div>
   );
