@@ -19,7 +19,7 @@ jobs:
           node-version: "18.17.0"
 
       - name: Install dependencies
-        run: npm install --legacy-peer-deps
+        run: pnpm install
 
       - name: Build the project
         run: npm run export
