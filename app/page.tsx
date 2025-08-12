@@ -154,6 +154,9 @@ export default function Home() {
                 Connect
               </Button>
             </div>
+            <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+              <p>Use <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">ws://</code> for unencrypted connections or <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">wss://</code> for secure encrypted connections.</p>
+            </div>
           </div>
         </motion.div>
       </div>
