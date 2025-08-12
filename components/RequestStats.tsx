@@ -117,7 +117,7 @@ export function RequestStats({
       rotateY: 0,
       rotateZ: 0,
       transition: {
-        type: "spring",
+        type: "spring" as const,
         stiffness: 200,
         damping: 18,
         mass: 0.8,
@@ -128,7 +128,7 @@ export function RequestStats({
       y: -8,
       rotateZ: 2,
       transition: {
-        type: "spring",
+        type: "spring" as const,
         stiffness: 400,
         damping: 15
       }
