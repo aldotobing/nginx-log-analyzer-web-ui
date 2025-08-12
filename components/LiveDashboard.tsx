@@ -35,9 +35,32 @@ const parseLogLine = (line: string) => {
         method = requestParts[0];
         // URL is typically the second part if it exists
         url = requestParts.length > 1 ? requestParts[1] : 'N/A';
-      } else {
-        // If it's not a valid method, classify it as an attack or malformed request
-        method = 'MALFORMED';
+      } else if (requestParts.length > 0) {
+        const firstPart = requestParts[0];
+        
+        // Check for known attack patterns or clearly malformed requests
+        const isAttackPattern = firstPart.includes('%') || 
+                               firstPart.includes(';') || 
+                               firstPart.includes('wget') || 
+                               firstPart.includes('curl') ||
+                               firstPart.length > 100;
+        
+        // Check for clearly non-HTTP method patterns
+        const isNonHttpPattern = firstPart.includes('_DUPLEX_') || 
+                                firstPart.startsWith('SSTP_') ||
+                                firstPart.includes('Mozi') ||
+                                firstPart.includes('->');
+        
+        if (isAttackPattern || isNonHttpPattern) {
+          method = 'MALFORMED';
+        } else if (firstPart.length <= 25) {
+          // Short, non-attack patterns are classified as OTHER
+          method = 'OTHER';
+        } else {
+          // Long patterns are classified as MALFORMED
+          method = 'MALFORMED';
+        }
+        
         url = request; // Keep the full request for analysis
       }
     }

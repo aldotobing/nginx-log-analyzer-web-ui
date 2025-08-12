@@ -26,6 +26,7 @@ const HTTP_METHOD_DESCRIPTIONS: Readonly<Record<string, string>> = {
   TRACE: "Performs a message loop-back test",
   CONNECT: "Establishes a tunnel to the server",
   MALFORMED: "Malformed or attack requests",
+  OTHER: "Non-standard HTTP methods",
 };
 
 const HTTP_METHOD_COLORS: Readonly<
@@ -41,6 +42,7 @@ const HTTP_METHOD_COLORS: Readonly<
   TRACE: { base: "#8b5cf6", hover: "#7c3aed" }, // violet-500, violet-600
   CONNECT: { base: "#14b8a6", hover: "#0d9488" }, // teal-500, teal-600
   MALFORMED: { base: "#f43f5e", hover: "#e11d48" }, // rose-500, rose-600
+  OTHER: { base: "#94a3b8", hover: "#64748b" }, // slate-400, slate-500
 };
 
 interface HttpMethodsChartProps {
@@ -70,7 +72,7 @@ export function HttpMethodsChart({ data, className = "", onFilter, activeFilter 
   const methodsData = useMemo(() => {
     if (total === 0) return [];
     return Object.entries(data)
-      .filter(([method]) => method.length <= 20) // Filter out extremely long method names that are likely malicious
+      .filter(([method]) => method.length <= 25) // Filter out extremely long method names that are likely malicious
       .map(([method, count]) => ({
         method,
         count,
@@ -98,10 +100,10 @@ export function HttpMethodsChart({ data, className = "", onFilter, activeFilter 
         backgroundColor: methodsData.map(
           (item) => activeFilter === item.method 
             ? (HTTP_METHOD_COLORS[item.method]?.hover ?? "#475569") 
-            : (HTTP_METHOD_COLORS[item.method]?.base ?? "#64748b")
+            : (HTTP_METHOD_COLORS[item.method]?.base ?? "#94a3b8") // Fallback to slate-400 for unknown methods
         ),
         hoverBackgroundColor: methodsData.map(
-          (item) => HTTP_METHOD_COLORS[item.method]?.hover ?? "#475569"
+          (item) => HTTP_METHOD_COLORS[item.method]?.hover ?? "#64748b" // Fallback to slate-500 for unknown methods
         ),
         borderWidth: 4,
         borderColor: isDarkMode ? "rgba(31, 41, 55, 0.8)" : "rgba(255, 255, 255, 0.9)",
