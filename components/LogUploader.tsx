@@ -72,9 +72,13 @@ export function LogUploader({ onLogParsed }: LogUploaderProps) {
       } else if (event.data.progress) {
         setProgress(event.data.progress);
       } else {
-        onLogParsed(event.data);
-        setIsProcessing(false);
-        setDetectedLogType("");
+        // Worker is done, but we'll add a small delay for UX
+        setProgress(100);
+        setTimeout(() => {
+          onLogParsed(event.data);
+          setIsProcessing(false);
+          setDetectedLogType("");
+        }, 2000); // Keep processing view for 2 seconds after completion
       }
     };
     worker.postMessage({ logContent: content, format });
@@ -379,6 +383,35 @@ function ProcessingState({
   progress: number;
   logType?: string;
 }) {
+  const [message, setMessage] = useState("Kicking off the analysis engine...");
+
+  const processingMessages = [
+    "Analyzing log structure...",
+    "Extracting request patterns...",
+    "Identifying unique visitors...",
+    "Scanning for security threats...",
+    "Aggregating status codes...",
+    "Correlating traffic over time...",
+    "Building data visualizations...",
+    "Compiling the final report...",
+  ];
+
+  useEffect(() => {
+    if (progress === 100) {
+      setMessage("Finalizing report...");
+      return; // Stop cycling messages
+    }
+
+    let messageIndex = 0;
+    const interval = setInterval(() => {
+      // Cycle through messages, but don't go to the last one, which is for the end.
+      messageIndex = (messageIndex + 1) % (processingMessages.length - 1);
+      setMessage(processingMessages[messageIndex]);
+    }, 1200); // Change message every 1.2 seconds
+
+    return () => clearInterval(interval);
+  }, [progress]);
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -393,7 +426,7 @@ function ProcessingState({
       <div className="flex items-center justify-center space-x-3">
         <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
         <p className="text-sm font-medium text-gray-600 dark:text-gray-300">
-          Processing log file...
+          {message}
         </p>
       </div>
       <div className="relative h-2 w-full max-w-md mx-auto overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
