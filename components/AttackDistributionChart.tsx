@@ -1,6 +1,5 @@
-import { useMemo, useEffect, useState, useRef } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { Radar } from "react-chartjs-2";
-import { motion } from "framer-motion";
 import {
   Chart as ChartJS,
   RadialLinearScale,
