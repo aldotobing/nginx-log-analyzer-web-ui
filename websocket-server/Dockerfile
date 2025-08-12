@@ -1,15 +1,19 @@
 FROM node:18-alpine
 
-WORKDIR /usr/src/app
+WORKDIR /app
 
-COPY package.json ./
-
+# Install dependencies
+COPY package*.json ./
 RUN npm install
 
-COPY server.js ./
+# Install required tools for tail
+RUN apk add --no-cache procps
 
-# Expose the WebSocket port
+# Copy source code
+COPY . .
+
+# Expose the port (will be overridden by docker-compose)
 EXPOSE 1234
 
-# Run
+# Start the application
 CMD ["node", "server.js"]

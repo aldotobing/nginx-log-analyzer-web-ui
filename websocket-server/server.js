@@ -1,47 +1,109 @@
 const { WebSocketServer } = require('ws');
 const { spawn } = require('child_process');
+const fs = require('fs');
+const https = require('https');
 
-const wss = new WebSocketServer({ port: 1234 });
+// Get configuration from environment variables
+const PORT = process.env.WS_PORT;
+const LOG_FILE_PATH = process.env.LOG_FILE_PATH;
+const TAIL_LINES = process.env.TAIL_LINES;
 
-// The path to the log file *inside the container*, which we'll map from the host.
-const logFilePath = '/var/log/nginx/access.log';
+// SSL configuration
+const SSL_CERT_PATH = process.env.SSL_CERT_PATH;
+const SSL_KEY_PATH = process.env.SSL_KEY_PATH;
 
-console.log('WebSocket server started on port 1234');
-console.log(`Watching for changes in: ${logFilePath}`);
+// Validate required environment variables
+if (!PORT || !LOG_FILE_PATH || !TAIL_LINES) {
+  console.error('Error: WS_PORT, LOG_FILE_PATH, and TAIL_LINES environment variables are required');
+  process.exit(1);
+}
 
-wss.on('connection', (ws) => {
-  console.log('Client connected');
+// Check if SSL files exist
+let sslOptions = {};
+if (SSL_CERT_PATH && SSL_KEY_PATH) {
+  try {
+    sslOptions = {
+      cert: fs.readFileSync(SSL_CERT_PATH),
+      key: fs.readFileSync(SSL_KEY_PATH)
+    };
+    console.log('SSL certificate and key loaded successfully');
+  } catch (error) {
+    console.error('Error loading SSL certificate or key:', error.message);
+    process.exit(1);
+  }
+}
 
-  // Start tailing the Nginx access log file.
-  // The '-f' flag means 'follow', so it will output new lines as they are added.
-  const tail = spawn('tail', ['-f', '-n', '5', logFilePath]);
+// Create HTTPS server if SSL is available, otherwise HTTP
+const server = Object.keys(sslOptions).length > 0 
+  ? https.createServer(sslOptions)
+  : null;
+
+const wss = new WebSocketServer(
+  server 
+    ? { server } 
+    : { port: PORT }
+);
+
+// Start the server
+if (server) {
+  server.listen(PORT, () => {
+    console.log(`Secure WebSocket server started on wss://0.0.0.0:${PORT}`);
+  });
+} else {
+  console.log(`WebSocket server started on ws://0.0.0.0:${PORT}`);
+}
+
+console.log(`Watching for changes in: ${LOG_FILE_PATH}`);
+
+wss.on('connection', (ws, req) => {
+  const clientIp = req.socket.remoteAddress;
+  const protocol = req.socket.encrypted ? 'wss' : 'ws';
+  console.log(`Client connected from ${clientIp} via ${protocol}`);
+
+  // Start tailing the Nginx access log file
+  const tail = spawn('tail', ['-f', '-n', TAIL_LINES, LOG_FILE_PATH]);
 
   // Stream data from tail to the WebSocket client
   tail.stdout.on('data', (data) => {
-    // The data buffer might contain multiple lines
     const lines = data.toString('utf-8').split('\n').filter(line => line.length > 0);
     lines.forEach(line => {
-      console.log(`Sending log line: ${line}`);
+      console.log(`Sending log line to ${clientIp}: ${line}`);
       ws.send(line);
     });
   });
 
   tail.stderr.on('data', (data) => {
-    console.error(`tail stderr: ${data}`);
+    console.error(`tail stderr for ${clientIp}: ${data}`);
   });
 
   tail.on('close', (code) => {
-    console.log(`tail process exited with code ${code}`);
+    console.log(`tail process for ${clientIp} exited with code ${code}`);
   });
 
   ws.on('close', () => {
-    console.log('Client disconnected');
-    // Kill the tail process when the client disconnects to save resources
+    console.log(`Client ${clientIp} disconnected`);
     tail.kill();
   });
 
   ws.on('error', (error) => {
-    console.error('WebSocket error:', error);
+    console.error(`WebSocket error from ${clientIp}:`, error);
     tail.kill();
+  });
+});
+
+// Handle server errors
+wss.on('error', (error) => {
+  console.error('WebSocket server error:', error);
+});
+
+// Handle process termination
+process.on('SIGINT', () => {
+  console.log('Shutting down WebSocket server...');
+  wss.close(() => {
+    if (server) {
+      server.close();
+    }
+    console.log('WebSocket server closed');
+    process.exit(0);
   });
 });

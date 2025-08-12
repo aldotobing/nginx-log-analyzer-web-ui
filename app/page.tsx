@@ -5,7 +5,7 @@ import { Dashboard } from "../components/Dashboard";
 import { DarkModeToggle } from "../components/DarkModeToggle";
 import { LogUploader } from "../components/LogUploader";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, Plus, Lock, FileText, BarChart3, RotateCw, Github, Twitter, Wifi, Link, Upload } from "lucide-react";
+import { ChevronDown, Plus, Lock, FileText, BarChart3, RotateCw, Github, Twitter, Wifi, Link, Upload, AlertTriangle } from "lucide-react";
 import { LiveDashboard } from "@/components/LiveDashboard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -155,7 +155,11 @@ export default function Home() {
               </Button>
             </div>
             <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-              <p><code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">ws://</code> for unencrypted WebSocket connections (port 80 by default) or <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">wss://</code> for secure WebSocket connections over TLS/SSL (port 443 by default). WSS requires a valid SSL certificate on the server.</p>
+              Use <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">ws://</code> (port 80) for unencrypted connections or <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">wss://</code> (port 443) for secure TLS/SSL connections. WSS requires a valid SSL certificate.
+            </div>
+            <div className="flex items-start space-x-2 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg mt-2">
+              <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <p>Currently supports Nginx log format only. Apache support coming soon.</p>
             </div>
           </div>
         </motion.div>

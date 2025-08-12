@@ -78,14 +78,14 @@ export function LiveDashboard({ wsUrl }: { wsUrl: string }) {
   const [error, setError] = useState<string | null>(null);
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [showWsUrl, setShowWsUrl] = useState(true);
+  const [showWsUrl, setShowWsUrl] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | undefined>();
 
   const handleNewLogLine = useCallback((line: string) => {
     const parsedLog = parseLogLine(line);
     if (parsedLog) {
-      console.log('New log line parsed:', parsedLog);
+      //console.log('New log line parsed:', parsedLog);
       setParsedLines(prevLines => {
         const updatedLines = [parsedLog, ...prevLines].slice(0, 500);
         const aggregatedData = aggregateLogData(updatedLines);
@@ -95,7 +95,7 @@ export function LiveDashboard({ wsUrl }: { wsUrl: string }) {
           // Preserve any existing data that might not be in the current aggregation
           // But ensure we're creating a new object reference
         };
-        console.log('Updated log data:', newData);
+        //console.log('Updated log data:', newData);
         setLogData(newData);
         return updatedLines;
       });
