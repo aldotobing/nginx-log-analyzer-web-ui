@@ -18,16 +18,18 @@ jobs:
         with:
           node-version: "18.17.0"
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 9
+
       - name: Install dependencies
         run: pnpm install
 
       - name: Build the project
-        run: npm run export
+        run: pnpm run export
         env:
           NODE_ENV: production
-
-      # - name: Create CNAME file
-      #   run: echo "linkedin.aldotobing.online" > ./out/CNAME
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
