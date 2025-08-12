@@ -48,9 +48,10 @@ interface HttpMethodsChartProps {
   className?: string;
   onFilter?: (key: string, value: any) => void;
   activeFilter?: string | null;
+  parsedLines?: any[];
 }
 
-export function HttpMethodsChart({ data, className = "", onFilter, activeFilter }: HttpMethodsChartProps) {
+export function HttpMethodsChart({ data, className = "", onFilter, activeFilter, parsedLines }: HttpMethodsChartProps) {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const chartRef = useRef<ChartJS<"doughnut">>(null);
 
