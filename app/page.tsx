@@ -5,7 +5,7 @@ import { Dashboard } from "../components/Dashboard";
 import { DarkModeToggle } from "../components/DarkModeToggle";
 import { LogUploader } from "../components/LogUploader";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, Plus, Lock, FileText, BarChart3, RotateCw } from "lucide-react";
+import { ChevronDown, Plus, Lock, FileText, BarChart3, RotateCw, Github, Twitter } from "lucide-react";
 
 export default function Home() {
   const [logData, setLogData] = useState(null);
@@ -17,12 +17,11 @@ export default function Home() {
   // Initialize dark mode from localStorage
   useEffect(() => {
     const savedTheme = localStorage.getItem("darkMode");
-    if (savedTheme) {
+    if (savedTheme !== null) {
       setIsDarkMode(JSON.parse(savedTheme));
     } else {
-      // Check system preference
-      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      setIsDarkMode(prefersDark);
+      // Default to light mode
+      setIsDarkMode(false);
     }
     setIsLoaded(true);
   }, []);
@@ -99,12 +98,16 @@ export default function Home() {
                 className="flex items-center space-x-3"
               >
                 <div className="flex items-center space-x-2">
-                  <div className="p-2 bg-blue-500 rounded-lg">
-                    <BarChart3 className="w-5 h-5 text-white" />
+                  <div className="flex items-center justify-center w-10 h-10 rounded-lg overflow-hidden">
+                    <img 
+                      src="/assets/img/analyze.jpg" 
+                      alt="HTTP Log Analyzer" 
+                      className="w-full h-full object-cover"
+                    />
                   </div>
                   <div>
                     <h1 className="text-xl lg:text-2xl font-bold text-gray-800 dark:text-gray-100 tracking-tight">
-                      Log Analyzer
+                      HTTP Log Analyzer
                     </h1>
                     <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">
                       Professional Edition
@@ -112,9 +115,6 @@ export default function Home() {
                   </div>
                 </div>
                 <div className="hidden sm:flex items-center space-x-2">
-                  <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full dark:bg-blue-900/50 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-                    Beta
-                  </span>
                   {logData && fileName && (
                     <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full dark:bg-green-900/50 dark:text-green-300 border border-green-200 dark:border-green-800 flex items-center">
                       <FileText className="w-3 h-3 mr-1" />
@@ -271,7 +271,7 @@ export default function Home() {
         </main>
 
         {/* Footer */}
-        <footer className="border-t border-gray-200/50 dark:border-gray-700/50 mt-16 bg-white/30 dark:bg-gray-900/30 backdrop-blur-sm">
+        <footer className="border-t border-gray-200/50 dark:border-gray-700/50 mt-16 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <motion.div
               variants={containerVariants}
@@ -281,54 +281,53 @@ export default function Home() {
             >
               <motion.div
                 variants={itemVariants}
-                className="flex items-center justify-center space-x-2 text-sm text-gray-600 dark:text-gray-400"
+                className="flex flex-col sm:flex-row items-center justify-center gap-2 text-sm text-gray-700 dark:text-gray-300 text-center"
               >
-                <Lock className="h-4 w-4" />
-                <span className="font-medium">Privacy First</span>
-                <span>•</span>
+                <span className="flex items-center">
+                  <Lock className="h-4 w-4 mr-1.5 flex-shrink-0" />
+                  <span className="font-medium">Privacy First</span>
+                </span>
+                <span className="hidden sm:inline">•</span>
                 <span>Your logs are processed locally and never stored</span>
               </motion.div>
 
               <motion.div
                 variants={itemVariants}
-                className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-8"
+                className="flex flex-col items-center space-y-6"
               >
-                <p className="text-center text-sm text-gray-600 dark:text-gray-300">
-                  Crafted with ❤️ by{" "}
-                  <span className="font-semibold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                    Aldo Tobing
-                  </span>
-                </p>
+                <div className="flex flex-col items-center space-y-4">
+                  <p className="text-center text-sm text-gray-700 dark:text-gray-300">
+                    Crafted with <span className="text-red-500">❤️</span> by{" "}
+                    <a 
+                      href="https://aldotobing.com" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="font-semibold bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400 bg-clip-text text-transparent hover:opacity-90 transition-opacity"
+                    >
+                      Aldo Tobing
+                    </a>
+                  </p>
 
-                <div className="flex items-center space-x-4">
-                  <a
-                    href="https://github.com/aldotobing"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200"
-                    aria-label="GitHub Profile"
-                  >
-                    <img
-                      src="/assets/img/github-mark.png"
-                      alt="GitHub"
-                      className="h-5 w-5"
-                      loading="lazy"
-                    />
-                  </a>
-                  <a
-                    href="https://twitter.com/aldo_tobing"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200"
-                    aria-label="Twitter Profile"
-                  >
-                    <img
-                      src="/assets/img/x.png"
-                      alt="Twitter"
-                      className="h-4 w-4"
-                      loading="lazy"
-                    />
-                  </a>
+                  <div className="flex items-center space-x-6">
+                    <a
+                      href="https://github.com/aldotobing"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 transition-colors duration-200"
+                      aria-label="GitHub Profile"
+                    >
+                      <Github className="w-5 h-5" />
+                    </a>
+                    <a
+                      href="https://twitter.com/aldo_tobing"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 transition-colors duration-200"
+                      aria-label="Twitter Profile"
+                    >
+                      <Twitter className="w-5 h-5" />
+                    </a>
+                  </div>
                 </div>
               </motion.div>
             </motion.div>

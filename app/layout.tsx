@@ -6,25 +6,25 @@ import type React from "react";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Log Analyzer - Analyze & Visualize Nginx and Apache Logs",
+  title: "HTTP Log Analyzer - Analyze & Visualize Web Server Logs",
   description:
-    "Analyze and visualize your Nginx and Apache HTTPD logs with ease. Gain insights into server performance and web traffic with Log Analyzer.",
+    "Analyze and visualize your Nginx and Apache HTTPD logs with ease. Gain insights into server performance and web traffic with HTTP Log Analyzer.",
   generator: "Aldo Tobing",
   keywords: [
-    "Log Analyzer",
+    "HTTP Log Analyzer",
     "Nginx logs",
     "Apache logs",
     "Server performance",
     "Traffic analysis",
     "Server monitoring",
   ],
-  applicationName: "Log Analyzer",
+  applicationName: "HTTP Log Analyzer",
   openGraph: {
-    title: "Log Analyzer - Analyze & Visualize Nginx and Apache Logs",
+    title: "HTTP Log Analyzer - Analyze & Visualize Web Server Logs",
     description:
       "Analyze your Nginx and Apache HTTPD logs with powerful insights into your server's traffic and performance.",
     url: "https://nginx.aldotobing.online",
-    siteName: "Log Analyzer",
+    siteName: "HTTP Log Analyzer",
     images: [
       {
         url: "https://nginx.aldotobing.online/assets/img/analyze.jpg",
@@ -65,14 +65,14 @@ export default function RootLayout({
             __html: JSON.stringify({
               "@context": "https://schema.org",
               "@type": "WebApplication",
-              name: "Log Analyzer",
+              name: "HTTP Log Analyzer",
               url: "https://nginx.aldotobing.online",
               description:
                 "Analyze your Nginx and Apache HTTPD logs with powerful insights into your server's traffic and performance.",
               applicationCategory: "Utility",
               operatingSystem: "All",
               keywords: [
-                "Log Analyzer",
+                "HTTP Log Analyzer",
                 "Nginx logs",
                 "Apache logs",
                 "Server performance",
