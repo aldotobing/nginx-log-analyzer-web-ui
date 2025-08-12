@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useState } from "react";
+import { useMemo, useEffect, useState, useRef } from "react";
 import { Radar } from "react-chartjs-2";
 import { motion } from "framer-motion";
 import {
@@ -33,11 +33,32 @@ export function AttackDistributionChart({
   const [isDarkMode, setIsDarkMode] = useState(false);
 
   useEffect(() => {
-    const updateMode = () => setIsDarkMode(document.documentElement.classList.contains("dark"));
+    const updateMode = () => {
+      const isDark = document.documentElement.classList.contains("dark");
+      setIsDarkMode(isDark);
+    };
+    
+    // Initial check
     updateMode();
+    
+    // Listen for class changes on the document element
     const observer = new MutationObserver(updateMode);
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
-    return () => observer.disconnect();
+    observer.observe(document.documentElement, { 
+      attributes: true, 
+      attributeFilter: ["class"] 
+    });
+    
+    // Also listen for storage changes in case theme is changed elsewhere
+    const handleStorageChange = () => {
+      updateMode();
+    };
+    
+    window.addEventListener("storage", handleStorageChange);
+    
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("storage", handleStorageChange);
+    };
   }, []);
 
   const { totalAttacks, attackLabels, attackCounts, metrics } = useMemo(() => {
@@ -77,24 +98,29 @@ export function AttackDistributionChart({
     };
   }, [data]);
 
-  const chartData = useMemo(() => ({
+  const chartData = {
     labels: attackLabels,
     datasets: [
       {
         label: 'Attack Count',
         data: attackCounts,
-        backgroundColor: 'rgba(239, 68, 68, 0.2)',
-        borderColor: 'rgba(239, 68, 68, 1)',
-        borderWidth: 2,
-        pointBackgroundColor: 'rgba(239, 68, 68, 1)',
-        pointBorderColor: '#fff',
-        pointHoverBackgroundColor: '#fff',
-        pointHoverBorderColor: 'rgba(239, 68, 68, 1)',
+        backgroundColor: isDarkMode ? 'rgba(255, 0, 0, 0.2)' : 'rgba(220, 38, 38, 0.15)',
+        borderColor: isDarkMode ? 'rgba(255, 50, 50, 1)' : 'rgba(220, 38, 38, 1)',
+        borderWidth: isDarkMode ? 4 : 3,
+        pointBackgroundColor: isDarkMode ? 'rgba(255, 100, 100, 1)' : 'rgba(220, 38, 38, 1)',
+        pointBorderColor: isDarkMode ? 'rgba(255, 200, 200, 1)' : '#fff',
+        pointHoverBackgroundColor: isDarkMode ? 'rgba(255, 0, 0, 1)' : '#fff',
+        pointHoverBorderColor: isDarkMode ? 'rgba(255, 255, 255, 1)' : 'rgba(220, 38, 38, 1)',
+        pointRadius: isDarkMode ? 7 : 6,
+        pointHoverRadius: isDarkMode ? 9 : 8,
+        // Add glow effect through shadow
+        shadowBlur: isDarkMode ? 15 : 8,
+        shadowColor: isDarkMode ? 'rgba(255, 0, 0, 0.6)' : 'rgba(220, 38, 38, 0.4)',
       },
     ],
-  }), [attackLabels, attackCounts]);
+  };
 
-  const options: ChartOptions<"radar"> = useMemo(() => ({
+  const options: ChartOptions<"radar"> = {
     responsive: true,
     maintainAspectRatio: false,
     onClick: (event: ChartEvent, elements: ActiveElement[], chart: ChartJS) => {
@@ -115,13 +141,13 @@ export function AttackDistributionChart({
       legend: { display: false },
       tooltip: {
         enabled: true,
-        backgroundColor: isDarkMode ? 'rgba(17, 24, 39, 0.9)' : 'rgba(255, 255, 255, 0.9)',
-        titleColor: isDarkMode ? '#F9FAFB' : '#111827',
-        bodyColor: isDarkMode ? '#D1D5DB' : '#374151',
-        borderColor: isDarkMode ? 'rgba(209, 213, 219, 0.2)' : 'rgba(0, 0, 0, 0.1)',
+        backgroundColor: isDarkMode ? 'rgba(30, 41, 59, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+        titleColor: isDarkMode ? '#f9fafb' : '#111827',
+        bodyColor: isDarkMode ? '#e5e7eb' : '#374151',
+        borderColor: isDarkMode ? 'rgba(55, 65, 81, 0.8)' : 'rgba(0, 0, 0, 0.1)',
         borderWidth: 1,
-        padding: 15,
-        cornerRadius: 12,
+        padding: 12,
+        cornerRadius: 8,
         displayColors: false,
         callbacks: {
           title: (ctx) => `Attack Type: ${ctx[0].label}`,
@@ -136,17 +162,27 @@ export function AttackDistributionChart({
     scales: {
       r: {
         beginAtZero: true,
-        grid: { color: isDarkMode ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.05)" },
-        angleLines: { color: isDarkMode ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.05)" },
+        grid: { 
+          color: isDarkMode ? "rgba(255, 255, 255, 0.25)" : "rgba(0, 0, 0, 0.1)",
+          lineWidth: isDarkMode ? 2 : 1
+        },
+        angleLines: { 
+          color: isDarkMode ? "rgba(255, 255, 255, 0.3)" : "rgba(0, 0, 0, 0.1)",
+          lineWidth: isDarkMode ? 2 : 1
+        },
         pointLabels: { 
-          color: isDarkMode ? "#E5E7EB" : "#374151", 
+          color: isDarkMode ? "#ffffff" : "#374151", 
           font: { size: 12, weight: 'bold' as const },
           padding: 15,
         },
-        ticks: { display: false, stepSize: attackCounts.length > 0 ? Math.ceil(Math.max(...attackCounts) / 4) : 1 },
+        ticks: { 
+          display: false, 
+          stepSize: attackCounts.length > 0 ? Math.ceil(Math.max(...attackCounts) / 4) : 1,
+          color: isDarkMode ? "#e5e7eb" : "#6b7280"
+        },
       },
     },
-  }), [isDarkMode, onFilter, activeFilter, attackLabels, attackCounts, totalAttacks]);
+  };
 
   if (!totalAttacks) {
     return (
@@ -174,7 +210,7 @@ export function AttackDistributionChart({
 
       <div className="p-6 space-y-6">
         <div className="h-[200px] sm:h-[250px] md:h-[300px] relative">
-          <Radar data={chartData} options={options} />
+          <Radar key={isDarkMode ? "dark" : "light"} data={chartData} options={options} />
         </div>
       </div>
     </div>

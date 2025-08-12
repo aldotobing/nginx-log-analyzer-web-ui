@@ -96,8 +96,8 @@ export function RequestStats({
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.2,
-        delayChildren: 0.3
+        staggerChildren: 0.12,
+        delayChildren: 0.15
       }
     }
   };
@@ -105,26 +105,32 @@ export function RequestStats({
   const cardVariants = {
     hidden: { 
       opacity: 0, 
-      y: 50,
-      scale: 0.8
+      scale: 0.85,
+      rotateX: -15,
+      rotateY: -15,
+      rotateZ: -5
     },
     visible: { 
       opacity: 1, 
-      y: 0,
       scale: 1,
+      rotateX: 0,
+      rotateY: 0,
+      rotateZ: 0,
       transition: {
         type: "spring",
-        stiffness: 100,
-        damping: 12,
+        stiffness: 200,
+        damping: 18,
+        mass: 0.8,
         duration: 0.7
       }
     },
     hover: {
-      y: -10,
+      y: -8,
+      rotateZ: 2,
       transition: {
         type: "spring",
         stiffness: 400,
-        damping: 10
+        damping: 15
       }
     }
   };
@@ -237,27 +243,27 @@ export function RequestStats({
           <div>
             <motion.h2
               className="text-2xl font-bold text-gray-900 dark:text-white"
-              initial={{ opacity: 0, x: -30 }}
-              animate={{ opacity: 1, x: 0 }}
+              initial={{ opacity: 0, x: -20, rotateX: -10 }}
+              animate={{ opacity: 1, x: 0, rotateX: 0 }}
               transition={{ 
                 type: "spring", 
-                stiffness: 100, 
-                damping: 12,
-                duration: 0.6 
+                stiffness: 150, 
+                damping: 15,
+                duration: 0.7 
               }}
             >
               Request Overview
             </motion.h2>
             <motion.p
               className="text-gray-600 dark:text-gray-400 mt-1"
-              initial={{ opacity: 0, x: -30 }}
-              animate={{ opacity: 1, x: 0 }}
+              initial={{ opacity: 0, x: -20, rotateX: -10 }}
+              animate={{ opacity: 1, x: 0, rotateX: 0 }}
               transition={{ 
                 type: "spring", 
-                stiffness: 100, 
-                damping: 12,
-                duration: 0.6, 
-                delay: 0.1 
+                stiffness: 150, 
+                damping: 15,
+                duration: 0.7, 
+                delay: 0.05 
               }}
             >
               Key metrics from your server logs
@@ -266,17 +272,19 @@ export function RequestStats({
           
           {/* Security Score Badge */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.5, rotate: -10 }}
-            animate={{ opacity: 1, scale: 1, rotate: 0 }}
+            initial={{ opacity: 0, scale: 0.7, rotateY: -20, rotateX: -10 }}
+            animate={{ opacity: 1, scale: 1, rotateY: 0, rotateX: 0 }}
             transition={{ 
               type: "spring", 
-              stiffness: 200, 
-              damping: 10,
-              duration: 0.5, 
-              delay: 0.4 
+              stiffness: 250, 
+              damping: 20,
+              mass: 0.8,
+              duration: 0.6, 
+              delay: 0.3 
             }}
             whileHover={{ 
-              scale: 1.05,
+              scale: 1.08,
+              rotateZ: 3,
               transition: { duration: 0.2 }
             }}
             className={`flex items-center space-x-2 px-3 py-1 rounded-full text-sm font-medium ${
@@ -370,17 +378,19 @@ export function RequestStats({
         {/* Additional Insights */}
         {(data.avgRequestsPerHour || data.peakHour) && (
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, scale: 0.95, rotateX: -10 }}
+            animate={{ opacity: 1, scale: 1, rotateX: 0 }}
             transition={{ 
               type: "spring", 
-              stiffness: 100, 
-              damping: 12,
+              stiffness: 150, 
+              damping: 18,
+              mass: 0.9,
               duration: 0.7,
-              delay: 1.0
+              delay: 0.8
             }}
             whileHover={{ 
               y: -5,
+              rotateZ: 2,
               transition: { duration: 0.2 }
             }}
             className="mt-4 p-3 bg-gray-50/50 dark:bg-gray-800/30 rounded-xl border border-gray-200/50 dark:border-gray-700/50"

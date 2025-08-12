@@ -308,20 +308,58 @@ export default function TrafficOverTimeChart({
   if (!data.length) {
     return (
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0, scale: 0.9, rotateX: -10, rotateY: -5 }}
+        animate={{ opacity: 1, scale: 1, rotateX: 0, rotateY: 0 }}
+        transition={{ 
+          type: "spring", 
+          stiffness: 120, 
+          damping: 18,
+          mass: 1.2,
+          duration: 0.8 
+        }}
         className={`bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-2xl border border-gray-200 dark:border-gray-700/50 p-8 ${className}`}
       >
         <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
+          <motion.div 
+            className="w-16 h-16 mx-auto mb-4 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center"
+            initial={{ opacity: 0, scale: 0.5, rotate: -25, rotateX: -20 }}
+            animate={{ opacity: 1, scale: 1, rotate: 0, rotateX: 0 }}
+            transition={{ 
+              type: "spring", 
+              stiffness: 180, 
+              damping: 15,
+              mass: 0.9,
+              delay: 0.2 
+            }}
+          >
             <BarChart3 className="h-8 w-8 text-gray-400" />
-          </div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+          </motion.div>
+          <motion.h3
+            className="text-lg font-semibold text-gray-900 dark:text-white mb-2"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ 
+              type: "spring",
+              stiffness: 100,
+              damping: 15,
+              delay: 0.3 
+            }}
+          >
             No Traffic Data
-          </h3>
-          <p className="text-gray-600 dark:text-gray-400">
+          </motion.h3>
+          <motion.p
+            className="text-gray-600 dark:text-gray-400"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ 
+              type: "spring",
+              stiffness: 100,
+              damping: 15,
+              delay: 0.4 
+            }}
+          >
             Upload log files to see traffic patterns over time.
-          </p>
+          </motion.p>
         </div>
       </motion.div>
     );
@@ -329,28 +367,81 @@ export default function TrafficOverTimeChart({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6 }}
+      initial={{ opacity: 0, scale: 0.9, rotateX: -10, rotateY: -5 }}
+      animate={{ opacity: 1, scale: 1, rotateX: 0, rotateY: 0 }}
+      transition={{ 
+        type: "spring", 
+        stiffness: 120, 
+        damping: 18,
+        mass: 1.2,
+        duration: 0.8 
+      }}
       className={`bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-2xl ${className}`}
     >
+      <motion.div
+        variants={{
+          hidden: { opacity: 0 },
+          visible: {
+            opacity: 1,
+            transition: {
+              staggerChildren: 0.12,
+              delayChildren: 0.15
+            }
+          }
+        }}
+        initial="hidden"
+        animate="visible"
+        className="h-full"
+      >
       {/* Header */}
       <div className="p-6 pb-4 border-b border-gray-200/50 dark:border-gray-700/50">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center space-x-2">
-              <BarChart3 className="h-5 w-5 text-blue-500" />
-              <span>Traffic Timeline Analysis</span>
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">
-              {timeFrame === "hourly" 
-                ? "Hourly request distribution patterns" 
-                : "Traffic volume across 6-hour time periods"}
-            </p>
-          </div>
+          <motion.div
+          variants={{
+            hidden: { opacity: 0, y: 20, rotateX: 10 },
+            visible: { 
+              opacity: 1, 
+              y: 0, 
+              rotateX: 0,
+              transition: {
+                type: "spring",
+                stiffness: 100,
+                damping: 15,
+                mass: 0.8
+              }
+            }
+          }}
+        >
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center space-x-2">
+            <BarChart3 className="h-5 w-5 text-blue-500" />
+            <span>Traffic Timeline Analysis</span>
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">
+            {timeFrame === "hourly" 
+              ? "Hourly request distribution patterns" 
+              : "Traffic volume across 6-hour time periods"}
+          </p>
+        </motion.div>
 
           {/* Time Frame Toggle */}
-          <div className="flex items-center space-x-3">
+          <motion.div 
+            className="flex items-center space-x-3"
+            variants={{
+              hidden: { opacity: 0, y: 20, rotateX: 10 },
+              visible: { 
+                opacity: 1, 
+                y: 0, 
+                rotateX: 0,
+                transition: {
+                  type: "spring",
+                  stiffness: 100,
+                  damping: 15,
+                  mass: 0.8,
+                  delay: 0.05
+                }
+              }
+            }}
+          >
             <Calendar className="h-4 w-4 text-gray-500" />
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
               Hourly
@@ -375,28 +466,63 @@ export default function TrafficOverTimeChart({
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
               Intervals
             </span>
-          </div>
+          </motion.div>
         </div>
       </div>
 
       {/* Chart */}
       <div className="p-6 pb-4">
-        <div className="relative h-80 mb-6">
+        <motion.div 
+          className="relative h-80 mb-6"
+          variants={{
+            hidden: { opacity: 0, scale: 0.95, rotateZ: -2 },
+            visible: { 
+              opacity: 1, 
+              scale: 1, 
+              rotateZ: 0,
+              transition: {
+                type: "spring",
+                stiffness: 100,
+                damping: 18,
+                mass: 1,
+                delay: 0.1
+              }
+            }
+          }}
+        >
           <motion.div
             key={timeFrame}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5 }}
+            initial={{ opacity: 0, scale: 0.98, rotateZ: -0.5 }}
+            animate={{ opacity: 1, scale: 1, rotateZ: 0 }}
+            transition={{ 
+              type: "spring", 
+              stiffness: 120, 
+              damping: 18,
+              mass: 0.7,
+              duration: 0.6 
+            }}
             className="w-full h-full"
           >
             <Line data={chartData} options={chartOptions} />
           </motion.div>
-        </div>
+        </motion.div>
       </div>
 
       {/* Metrics Grid */}
       <div className="p-6 pt-0">
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <motion.div 
+          className="grid grid-cols-2 sm:grid-cols-4 gap-4"
+          variants={{
+            hidden: { opacity: 0 },
+            visible: {
+              opacity: 1,
+              transition: {
+                staggerChildren: 0.08,
+                delayChildren: 0.2
+              }
+            }
+          }}
+        >
           {metrics.map((metric, index) => {
             const Icon = metric.icon;
             const colorClasses = {
@@ -410,33 +536,83 @@ export default function TrafficOverTimeChart({
             return (
               <motion.div
                 key={metric.title}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: index * 0.1 }}
+                variants={{
+                  hidden: { 
+                    opacity: 0, 
+                    scale: 0.85,
+                    rotateX: -15,
+                    rotateY: -15,
+                    y: 30
+                  },
+                  visible: { 
+                    opacity: 1, 
+                    scale: 1,
+                    rotateX: 0,
+                    rotateY: 0,
+                    y: 0,
+                    transition: {
+                      type: "spring",
+                      stiffness: 180,
+                      damping: 20,
+                      mass: 0.9,
+                      delay: index * 0.05
+                    }
+                  }
+                }}
+                whileHover={{ 
+                  y: -8,
+                  rotateZ: 3,
+                  transition: { 
+                    type: "spring",
+                    stiffness: 400,
+                    damping: 15
+                  }
+                }}
                 className={`p-4 rounded-xl border transition-all duration-200 hover:shadow-md ${colorClasses[metric.color as keyof typeof colorClasses]}`}
               >
                 <div className="flex items-center justify-between mb-2">
                   <Icon className="h-4 w-4 opacity-70" />
-                  <div className="text-xs font-medium opacity-60">
+                  <motion.div 
+                    className="text-xs font-medium opacity-60"
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.4 + index * 0.05 }}
+                  >
                     #{index + 1}
-                  </div>
+                  </motion.div>
                 </div>
                 <div className="space-y-1">
-                  <dt className="text-xs font-semibold uppercase tracking-wide opacity-80">
+                  <motion.dt 
+                    className="text-xs font-semibold uppercase tracking-wide opacity-80"
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.2 + index * 0.05 }}
+                  >
                     {metric.title}
-                  </dt>
-                  <dd className="text-lg font-bold">
+                  </motion.dt>
+                  <motion.dd 
+                    className="text-lg font-bold"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.25 + index * 0.05 }}
+                  >
                     {metric.value}
-                  </dd>
-                  <p className="text-xs opacity-60">
+                  </motion.dd>
+                  <motion.p 
+                    className="text-xs opacity-60"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 + index * 0.05 }}
+                  >
                     {metric.subtitle}
-                  </p>
+                  </motion.p>
                 </div>
               </motion.div>
             );
           })}
-        </div>
+        </motion.div>
       </div>
+    </motion.div>
     </motion.div>
   );
 }

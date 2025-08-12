@@ -61,19 +61,79 @@ export function TopIpAddressesChart({ data, suspiciousIps = {}, className = "", 
   }, [data]);
 
   useEffect(() => {
-    const fetchIpInfo = async (ip: string): Promise<IpInfo> => {
+    // Cache key prefix and expiration time (24 hours)
+    const CACHE_KEY_PREFIX = 'ipinfo_';
+    const CACHE_EXPIRATION = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+
+    // Get cached IP info or return null if expired/missing
+    const getCachedIpInfo = (ip: string): IpInfo | null => {
       try {
+        const cached = localStorage.getItem(`${CACHE_KEY_PREFIX}${ip}`);
+        if (!cached) return null;
+        
+        const { data, timestamp } = JSON.parse(cached);
+        const now = Date.now();
+        
+        // Check if cache is expired
+        if (now - timestamp > CACHE_EXPIRATION) {
+          localStorage.removeItem(`${CACHE_KEY_PREFIX}${ip}`);
+          return null;
+        }
+        
+        return data;
+      } catch (error) {
+        console.error(`Error reading cache for IP ${ip}:`, error);
+        return null;
+      }
+    };
+
+    // Save IP info to cache
+    const setCachedIpInfo = (ip: string, info: IpInfo) => {
+      try {
+        const cacheEntry = {
+          data: info,
+          timestamp: Date.now()
+        };
+        localStorage.setItem(`${CACHE_KEY_PREFIX}${ip}`, JSON.stringify(cacheEntry));
+      } catch (error) {
+        console.error(`Error caching info for IP ${ip}:`, error);
+      }
+    };
+
+    const fetchIpInfo = async (ip: string): Promise<IpInfo> => {
+      // Check cache first
+      const cachedInfo = getCachedIpInfo(ip);
+      if (cachedInfo) {
+        return cachedInfo;
+      }
+
+      try {
+        // Respect rate limiting - add a small delay for multiple requests
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
         const response = await fetch(`https://ipinfo.io/${ip}/json/`);
-        if (!response.ok) throw new Error('Failed to fetch');
+        if (!response.ok) {
+          if (response.status === 429) {
+            console.warn(`Rate limited for IP ${ip}. Using fallback data.`);
+            return { city: "Rate Limited", country: "N/A" };
+          }
+          throw new Error(`HTTP ${response.status}`);
+        }
+        
         const json = await response.json();
         
         const countryName = new Intl.DisplayNames(['en'], { type: 'region' }).of(json.country) || json.region || "Unknown";
         
-        return {
+        const info: IpInfo = {
           city: json.city || "Unknown",
           country: countryName,
           flag: json.country ? `https://flagcdn.com/16x12/${json.country.toLowerCase()}.png` : undefined,
         };
+        
+        // Cache the result
+        setCachedIpInfo(ip, info);
+        
+        return info;
       } catch (error) {
         console.error(`Error fetching info for IP ${ip}:`, error);
         return { city: "N/A", country: "N/A" };
@@ -83,15 +143,36 @@ export function TopIpAddressesChart({ data, suspiciousIps = {}, className = "", 
     const fetchAllIpInfo = async () => {
       setIsLoading(true);
       const ips = sortedData.map(([ip]) => ip);
-      const infoPromises = ips.map(ip => fetchIpInfo(ip));
-      const infoArray = await Promise.all(infoPromises);
       
-      const infoMap: Record<string, IpInfo> = {};
-      ips.forEach((ip, index) => {
-        infoMap[ip] = infoArray[index];
+      // Get cached info first to minimize API calls
+      const initialInfoMap: Record<string, IpInfo> = {};
+      const ipsToFetch: string[] = [];
+      
+      ips.forEach(ip => {
+        const cachedInfo = getCachedIpInfo(ip);
+        if (cachedInfo) {
+          initialInfoMap[ip] = cachedInfo;
+        } else {
+          ipsToFetch.push(ip);
+        }
       });
-
-      setIpInfo(infoMap);
+      
+      // Set cached data immediately
+      setIpInfo(initialInfoMap);
+      
+      // Only fetch data for IPs not in cache
+      if (ipsToFetch.length > 0) {
+        const infoPromises = ipsToFetch.map(ip => fetchIpInfo(ip));
+        const infoArray = await Promise.all(infoPromises);
+        
+        const updatedInfoMap = { ...initialInfoMap };
+        ipsToFetch.forEach((ip, index) => {
+          updatedInfoMap[ip] = infoArray[index];
+        });
+        
+        setIpInfo(updatedInfoMap);
+      }
+      
       setIsLoading(false);
     };
 
@@ -99,6 +180,7 @@ export function TopIpAddressesChart({ data, suspiciousIps = {}, className = "", 
       fetchAllIpInfo();
     } else {
       setIsLoading(false);
+      setIpInfo({});
     }
   }, [sortedData]);
 
@@ -184,7 +266,24 @@ export function TopIpAddressesChart({ data, suspiciousIps = {}, className = "", 
           label: (context: TooltipItem<"bar">) => {
             const ip = context.label;
             const count = context.raw as number;
-            const location = ipInfo[ip] ? `${ipInfo[ip].city}, ${ipInfo[ip].country}` : 'Loading...';
+            const info = ipInfo[ip];
+            
+            if (!info) {
+              return [
+                `Requests: ${count.toLocaleString()}`,
+                `Location: Loading...`
+              ];
+            }
+            
+            // Check if we have rate limited data
+            if (info.city === "Rate Limited") {
+              return [
+                `Requests: ${count.toLocaleString()}`,
+                `Location: Rate limit reached. Data unavailable.`
+              ];
+            }
+            
+            const location = `${info.city}, ${info.country}`;
             return [
               `Requests: ${count.toLocaleString()}`,
               `Location: ${location}${suspiciousIps[ip] ? ' (Suspicious IP)' : ''}`

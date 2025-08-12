@@ -89,14 +89,16 @@ export function HttpMethodsChart({ data, className = "", onFilter, activeFilter 
       {
         data: methodsData.map((item) => item.count),
         backgroundColor: methodsData.map(
-          (item) => activeFilter === item.method ? (HTTP_METHOD_COLORS[item.method]?.hover ?? "#475569") : (HTTP_METHOD_COLORS[item.method]?.base ?? "#64748b")
+          (item) => activeFilter === item.method 
+            ? (HTTP_METHOD_COLORS[item.method]?.hover ?? "#475569") 
+            : (HTTP_METHOD_COLORS[item.method]?.base ?? "#64748b")
         ),
         hoverBackgroundColor: methodsData.map(
           (item) => HTTP_METHOD_COLORS[item.method]?.hover ?? "#475569"
         ),
         borderWidth: 4,
-        borderColor: isDarkMode ? "#1f2937" : "#ffffff",
-        hoverBorderColor: isDarkMode ? "#374151" : "#f9fafb",
+        borderColor: isDarkMode ? "rgba(31, 41, 55, 0.8)" : "rgba(255, 255, 255, 0.9)",
+        hoverBorderColor: isDarkMode ? "rgba(55, 65, 81, 0.8)" : "rgba(249, 250, 251, 0.9)",
         hoverOffset: 15,
       },
     ],
@@ -176,27 +178,39 @@ export function HttpMethodsChart({ data, className = "", onFilter, activeFilter 
   }), [isDarkMode, total, onFilter, activeFilter]);
 
   return (
-    <div className={className}>
-      <div className="p-6 pb-4 border-b border-gray-200/50 dark:border-gray-700/50">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center space-x-2">
+    <div className={`${className} rounded-xl overflow-hidden`}>
+      <div className="p-6 pb-4 border-b border-gray-100 dark:border-gray-700/50">
+        <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 flex items-center space-x-2">
           <PieChart className="h-5 w-5 text-blue-500" />
           <span>HTTP Methods Distribution</span>
         </h2>
-        <p className="text-gray-600 dark:text-gray-400 mt-1">
+        <p className="text-gray-600 dark:text-gray-300/80 mt-1 text-sm">
           Breakdown of {total.toLocaleString()} requests. Click to filter.
         </p>
       </div>
 
       <div className="p-6 space-y-6">
         <div className="h-[200px] sm:h-[250px] md:h-[300px] relative">
-          <Doughnut ref={chartRef} data={chartData} options={options} plugins={[centerTextPlugin]} />
+          <Doughnut 
+            ref={chartRef} 
+            data={chartData} 
+            options={options} 
+            plugins={[centerTextPlugin]} 
+            className="relative z-10"
+          />
         </div>
         
-        <div className="flex flex-wrap justify-center gap-4">
+        <div className="flex flex-wrap justify-center gap-3">
           {methodsData.map((item, index) => (
-            <div 
+            <motion.div 
               key={item.method}
-              className={`flex items-center gap-2 text-sm cursor-pointer p-2 rounded-lg ${activeFilter === item.method ? 'bg-gray-200 dark:bg-gray-700' : ''}`}
+              className={`flex items-center gap-2 text-sm cursor-pointer px-3 py-1.5 rounded-lg transition-all duration-200 ${
+                activeFilter === item.method 
+                  ? 'bg-blue-50 dark:bg-blue-900/30 ring-1 ring-blue-200 dark:ring-blue-800/50' 
+                  : 'hover:bg-gray-100/80 dark:hover:bg-gray-700/50'
+              }`}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => onFilter && onFilter('method', activeFilter === item.method ? null : item.method)}
               onMouseEnter={() => {
                 if (chartRef.current) {
@@ -212,12 +226,16 @@ export function HttpMethodsChart({ data, className = "", onFilter, activeFilter 
               }}
             >
               <div 
-                className="w-3 h-3 rounded-sm"
-                style={{ backgroundColor: HTTP_METHOD_COLORS[item.method]?.base ?? '#64748b' }}
-              ></div>
-              <span className="font-medium text-gray-700 dark:text-gray-300">{item.method}</span>
-              <span className="text-gray-500 dark:text-gray-400">({item.percentage}%)</span>
-            </div>
+                className="w-3 h-3 rounded-sm flex-shrink-0"
+                style={{ 
+                  backgroundColor: activeFilter === item.method 
+                    ? (HTTP_METHOD_COLORS[item.method]?.hover ?? '#475569') 
+                    : (HTTP_METHOD_COLORS[item.method]?.base ?? '#64748b') 
+                }}
+              />
+              <span className="font-medium text-gray-700 dark:text-gray-200">{item.method}</span>
+              <span className="text-gray-500 dark:text-gray-300/80">({item.percentage}%)</span>
+            </motion.div>
           ))}
         </div>
       </div>
