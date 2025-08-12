@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { Doughnut } from "react-chartjs-2";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Chart as ChartJS,
   ArcElement,
@@ -11,7 +11,7 @@ import {
   ChartEvent,
   ActiveElement,
 } from "chart.js";
-import { PieChart, Server, Zap, AlertTriangle, ArrowRightLeft } from "lucide-react";
+import { PieChart, Server, Zap, AlertTriangle, ArrowRightLeft, X } from "lucide-react";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -53,6 +53,9 @@ interface HttpMethodsChartProps {
 
 export function HttpMethodsChart({ data, className = "", onFilter, activeFilter, parsedLines }: HttpMethodsChartProps) {
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
+  const [methodLogs, setMethodLogs] = useState<any[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const chartRef = useRef<ChartJS<"doughnut">>(null);
 
   useEffect(() => {
@@ -134,17 +137,39 @@ export function HttpMethodsChart({ data, className = "", onFilter, activeFilter,
     }
   }), [isDarkMode, total]);
 
+  const handleMethodClick = (method: string) => {
+    // Apply filter
+    if (onFilter) {
+      const newFilterValue = activeFilter === method ? null : method;
+      onFilter('method', newFilterValue);
+    }
+    
+    // Show logs modal
+    if (parsedLines && parsedLines.length > 0) {
+      const filteredLogs = parsedLines.filter(log => log.method === method);
+      setMethodLogs(filteredLogs);
+      setSelectedMethod(method);
+      setIsModalOpen(true);
+    }
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    // Reset filter when closing modal
+    if (onFilter && activeFilter !== null) {
+      onFilter('method', null);
+    }
+  };
+
   const options: ChartOptions<"doughnut"> = useMemo(() => ({
     responsive: true,
     maintainAspectRatio: false,
     cutout: "70%",
     onClick: (event: ChartEvent, elements: ActiveElement[], chart: ChartJS) => {
-      if (elements.length > 0 && onFilter && chart.data.labels) {
+      if (elements.length > 0 && chart.data.labels) {
         const elementIndex = elements[0].index;
         const clickedLabel = chart.data.labels[elementIndex] as string;
-        
-        const newFilterValue = activeFilter === clickedLabel ? null : clickedLabel;
-        onFilter('method', newFilterValue);
+        handleMethodClick(clickedLabel);
       }
     },
     onHover: (event: ChartEvent, elements: ActiveElement[], chart: ChartJS) => {
@@ -220,7 +245,7 @@ export function HttpMethodsChart({ data, className = "", onFilter, activeFilter,
               }`}
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.98 }}
-              onClick={() => onFilter && onFilter('method', activeFilter === item.method ? null : item.method)}
+              onClick={() => handleMethodClick(item.method)}
               onMouseEnter={() => {
                 if (chartRef.current) {
                   chartRef.current.setActiveElements([{ datasetIndex: 0, index }]);
@@ -248,6 +273,97 @@ export function HttpMethodsChart({ data, className = "", onFilter, activeFilter,
           ))}
         </div>
       </div>
+      
+      {/* Logs Modal */}
+      <AnimatePresence>
+        {isModalOpen && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <motion.div 
+              className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-4xl w-full max-h-[80vh] flex flex-col"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+            >
+              <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                  Logs for {selectedMethod} Requests
+                </h3>
+                <button 
+                  onClick={closeModal}
+                  className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <X className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+                </button>
+              </div>
+              
+              <div className="overflow-auto flex-1 p-6">
+                {methodLogs.length > 0 ? (
+                  <div className="space-y-4">
+                    <p className="text-gray-600 dark:text-gray-300">
+                      Showing {methodLogs.length} logs for {selectedMethod} method
+                    </p>
+                    <div className="space-y-3">
+                      {methodLogs.slice(0, 50).map((log, index) => (
+                        <div 
+                          key={index} 
+                          className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg font-mono text-sm overflow-x-auto"
+                        >
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200 px-2 py-1 rounded text-xs">
+                              {log.method}
+                            </span>
+                            <span className="text-gray-500 dark:text-gray-400 text-xs">
+                              {log.timestamp}
+                            </span>
+                          </div>
+                          <div className="text-gray-800 dark:text-gray-200 break-all">
+                            {log.path}
+                          </div>
+                          <div className="flex gap-4 mt-2 text-xs">
+                            <span className="text-gray-600 dark:text-gray-300">
+                              Status: <span className="font-medium">{log.status}</span>
+                            </span>
+                            <span className="text-gray-600 dark:text-gray-300">
+                              Size: <span className="font-medium">{log.bodyBytesSent}</span>
+                            </span>
+                            <span className="text-gray-600 dark:text-gray-300">
+                              IP: <span className="font-medium">{log.ipAddress}</span>
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                      {methodLogs.length > 50 && (
+                        <p className="text-center text-gray-500 dark:text-gray-400 text-sm">
+                          Showing first 50 of {methodLogs.length} logs
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <Server className="h-12 w-12 mx-auto text-gray-400 dark:text-gray-500 mb-4" />
+                    <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                      No logs found
+                    </h4>
+                    <p className="text-gray-500 dark:text-gray-400">
+                      No logs were found for the {selectedMethod} method.
+                    </p>
+                  </div>
+                )}
+              </div>
+              
+              <div className="p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end">
+                <button
+                  onClick={closeModal}
+                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors font-medium"
+                >
+                  Close
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
