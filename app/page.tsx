@@ -17,7 +17,6 @@ export default function Home() {
   const [parsedLines, setParsedLines] = useState<any[]>([]);
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [fileName, setFileName] = useState<string>("");
 
   // Initialize dark mode from localStorage
@@ -48,22 +47,14 @@ export default function Home() {
       setLogData(data);
       setParsedLines([]);
     }
-    setLoading(false);
   }, []);
 
   const toggleDarkMode = useCallback(() => {
     setIsDarkMode(prev => !prev);
   }, []);
 
-  const handleFileUpload = useCallback(() => {
-    setLoading(true);
-  }, []);
-
   const handleNewLog = useCallback(() => {
-    setLogData(null);
-    setFileName("");
-    setLoading(false);
-    window.location.reload();
+    window.location.href = '/';
   }, []);
 
   // Animation variants
@@ -226,43 +217,19 @@ export default function Home() {
                     variants={itemVariants}
                     className="max-w-2xl mx-auto"
                   >
-                    {loading ? (
-                      <div className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-2xl p-8 border border-gray-200 dark:border-gray-700 shadow-xl">
-                        <div className="flex flex-col items-center space-y-4">
-                          <div className="relative">
-                            <div className="w-12 h-12 border-4 border-blue-200 dark:border-blue-800 border-t-blue-500 dark:border-t-blue-400 rounded-full animate-spin"></div>
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <FileText className="w-5 h-5 text-blue-500 dark:text-blue-400" />
-                            </div>
-                          </div>
-                          <div className="text-center">
-                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
-                              Processing Your Log File
-                            </h3>
-                            <p className="text-gray-600 dark:text-gray-400">
-                              Analyzing your log file...
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-2xl p-8 border border-gray-200 dark:border-gray-700 shadow-xl">
-                        <LogUploader
-                          onLogParsed={handleLogParsed}
-                          onFileUpload={handleFileUpload}
-                        />
-                      </div>
-                    )}
+                    <div className="bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-2xl p-8 border border-gray-200 dark:border-gray-700 shadow-xl">
+                      <LogUploader
+                        onLogParsed={handleLogParsed}
+                      />
+                    </div>
                   </motion.div>
 
-                  {!loading && (
-                    <motion.div
-                      variants={itemVariants}
-                      className="flex justify-center mt-8"
-                    >
-                      <ChevronDown className="w-6 h-6 text-gray-400 dark:text-gray-500 animate-bounce" />
-                    </motion.div>
-                  )}
+                  <motion.div
+                    variants={itemVariants}
+                    className="flex justify-center mt-8"
+                  >
+                    <ChevronDown className="w-6 h-6 text-gray-400 dark:text-gray-500 animate-bounce" />
+                  </motion.div>
                 </motion.div>
               ) : (
                 <motion.div

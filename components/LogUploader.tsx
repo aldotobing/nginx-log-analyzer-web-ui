@@ -1,4 +1,4 @@
-import { SetStateAction, useCallback, useState } from "react";
+import { SetStateAction, useCallback, useState, useEffect, useRef } from "react";
 import { useDropzone } from "react-dropzone";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -17,10 +17,9 @@ interface LogStats {
 
 interface LogUploaderProps {
   onLogParsed: (data: { stats: LogStats; parsedLines: any[] }) => void;
-  onFileUpload: () => void;
 }
 
-export function LogUploader({ onLogParsed, onFileUpload }: LogUploaderProps) {
+export function LogUploader({ onLogParsed }: LogUploaderProps) {
   const [activeTab, setActiveTab] = useState("file");
   const [isProcessing, setIsProcessing] = useState(false);
   const [isDetermining, setIsDetermining] = useState(false);
@@ -29,6 +28,8 @@ export function LogUploader({ onLogParsed, onFileUpload }: LogUploaderProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [url, setUrl] = useState("");
   const [detectedLogType, setDetectedLogType] = useState("");
+  const [logType, setLogType] = useState("");
+  const errorRef = useRef<HTMLDivElement>(null);
 
   // Regex untuk Nginx dan Apache
   const nginxRegex =
@@ -79,7 +80,11 @@ export function LogUploader({ onLogParsed, onFileUpload }: LogUploaderProps) {
     worker.postMessage({ logContent: content, format });
   };
 
-  // onDrop: pakai metode hitung sample lines untuk deteksi
+  const processLogContent = (content: string, logType: string) => {
+    setIsProcessing(true);
+    processLogFile(content, logType.includes("Nginx") ? "nginx" : "apache");
+  };
+
   const onDrop = useCallback((acceptedFiles: any[]) => {
     const file = acceptedFiles[0];
     if (file) {
@@ -114,7 +119,7 @@ export function LogUploader({ onLogParsed, onFileUpload }: LogUploaderProps) {
       };
       reader.readAsText(file);
     }
-  }, []);
+  }, [onLogParsed]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -126,48 +131,79 @@ export function LogUploader({ onLogParsed, onFileUpload }: LogUploaderProps) {
     onDropAccepted: () => setIsDragging(false),
   });
 
-  // handleUrlSubmit: sama seperti onDrop, pakai determineLogType dengan delay
   const handleUrlSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!url) {
-      setErrorMessage("Please enter a valid URL");
+      setErrorMessage("Please enter a valid URL.");
       return;
     }
+
+    // 1. Reset state for a new submission
     setErrorMessage("");
-    onFileUpload();
+    setIsProcessing(false);
+    setDetectedLogType("");
+    setIsDetermining(true);
 
     try {
+      // 2. Fetch content
       const response = await fetch(url);
+      if (!response.ok) {
+        if (response.status === 404)
+          throw new Error("File not found at the specified URL.");
+        if (response.status === 403)
+          throw new Error("Access to the URL is forbidden.");
+        throw new Error(
+          `Failed to fetch file. Server responded with status: ${response.status}`
+        );
+      }
       const content = await response.text();
-      // Masuk ke mode determining
-      setIsDetermining(true);
+      if (!content.trim()) {
+        throw new Error("The fetched file is empty.");
+      }
+
+      // 3. Determine log type
+      const logTypeDetected = determineLogType(content);
+      if (!logTypeDetected) {
+        throw new Error(
+          "Could not determine log type. Please ensure it's a valid Nginx or Apache log."
+        );
+      }
+
+      // 4. Success path: show detected type, then process
+      setDetectedLogType(logTypeDetected);
       setTimeout(() => {
-        const logTypeDetected = determineLogType(content);
-        if (!logTypeDetected) {
-          setErrorMessage(
-            "The URL doesn't contain a valid Nginx or Apache Http log format"
-          );
-          setIsDetermining(false);
-          setIsProcessing(false);
-          return;
-        }
-        setDetectedLogType(logTypeDetected);
-        setTimeout(() => {
-          setIsDetermining(false);
-          setIsProcessing(true);
-          processLogFile(
-            content,
-            logTypeDetected.includes("Nginx") ? "nginx" : "apache"
-          );
-        }, 1500);
-      }, 1500);
+        setIsDetermining(false);
+        setIsProcessing(true);
+        processLogFile(
+          content,
+          logTypeDetected.includes("Nginx") ? "nginx" : "apache"
+        );
+      }, 1500); // Artificial delay for UX
     } catch (error) {
-      setErrorMessage(
-        "Failed to fetch log file from URL. Please check the URL and try again."
-      );
+      // 5. Error path: set error message and stop all loading states
+      let message = "An unknown error occurred.";
+      if (error instanceof Error) {
+        message = error.message;
+      }
+      if (
+        error instanceof TypeError &&
+        error.message.includes("Failed to fetch")
+      ) {
+        message =
+          "Failed to fetch the file. This could be a network issue or a CORS policy on the server preventing access.";
+      }
+
+      setErrorMessage(message);
+      setIsDetermining(false);
       setIsProcessing(false);
     }
   };
+
+  useEffect(() => {
+    if (errorMessage && errorRef.current) {
+      errorRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [errorMessage]);
 
   return (
     <motion.div
@@ -211,15 +247,27 @@ export function LogUploader({ onLogParsed, onFileUpload }: LogUploaderProps) {
       <AnimatePresence>
         {errorMessage && (
           <motion.div
+            ref={errorRef}
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="flex items-center justify-center space-x-2 bg-red-50 dark:bg-red-900/20 px-4 py-3 rounded-lg"
+            className="bg-red-50 dark:bg-red-900/20 px-4 py-3 rounded-lg border border-red-100 dark:border-red-900/30 mx-auto max-w-2xl w-full mb-6"
           >
-            <AlertCircle className="h-5 w-5 text-red-500 dark:text-red-400" />
-            <p className="text-sm font-medium text-red-600 dark:text-red-400">
-              {errorMessage}
-            </p>
+            <div className="flex items-start space-x-2">
+              <AlertCircle className="h-5 w-5 text-red-500 dark:text-red-400 mt-0.5 flex-shrink-0" />
+              <div className="space-y-1">
+                <p className="text-sm font-medium text-red-700 dark:text-red-300">
+                  Failed to load file
+                </p>
+                <div className="text-sm text-red-600 dark:text-red-400 space-y-1">
+                  {errorMessage.split('\n').map((line, i) => (
+                    <p key={i} className={i > 0 ? 'text-xs opacity-90' : ''}>
+                      {line.replace(/^[•\-]\s*/, '')}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

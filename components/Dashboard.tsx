@@ -92,7 +92,7 @@ export function Dashboard({ logData: initialLogData = {}, parsedLines = [] }: Da
   } = filteredData || {};
 
   const hasData = useMemo(() => {
-      return initialLogData && initialLogData.requestStats && initialLogData.requestStats.totalRequests > 0;
+      return initialLogData !== null && initialLogData.requestStats && initialLogData.requestStats.totalRequests > 0;
   }, [initialLogData]);
 
 
