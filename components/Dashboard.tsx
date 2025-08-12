@@ -16,13 +16,14 @@ import TopReferringUrlsChart from "./TopReferringUrlsChart";
 import TopRequestedUrlsChart from "./TopRequestedUrlsChart";
 import TopSuspiciousIpsChart from "./TopSuspiciousIpsChart";
 import { aggregateLogData } from "../lib/log-aggregator";
+import { LogData } from "./LiveDashboard";
 
 interface DashboardProps {
-  logData?: any;
+  stats?: LogData | null;
   parsedLines?: any[];
 }
 
-export function Dashboard({ logData: initialLogData = {}, parsedLines = [] }: DashboardProps) {
+export function Dashboard({ stats: initialLogData = null, parsedLines = [] }: DashboardProps) {
   const [filters, setFilters] = useState<Record<string, any>>({});
 
   const handleSetFilter = useCallback((key: string, value: any) => {
@@ -76,7 +77,7 @@ export function Dashboard({ logData: initialLogData = {}, parsedLines = [] }: Da
     //console.log('Filtered data result - traffic data points:', result.trafficOverTime.filter(x => x.count > 0).length, 'out of', result.trafficOverTime.length);
     //console.log('First few traffic data points:', result.trafficOverTime.filter(x => x.count > 0).slice(0, 3));
     return result;
-  }, [filters, parsedLines, initialLogData]);
+  }, [filters, parsedLines, JSON.stringify(initialLogData)]);
 
   const {
     requestStats,
@@ -149,7 +150,7 @@ export function Dashboard({ logData: initialLogData = {}, parsedLines = [] }: Da
         animate="visible"
       >
         <motion.div className="lg:col-span-12" variants={itemVariants}>
-          <RequestStats data={{...requestStats, suspiciousIps: suspiciousIps ? Object.keys(suspiciousIps).length : 0, totalAttackAttempts: recentAttacks?.length || 0 }} />
+          <RequestStats data={requestStats ? {...requestStats, suspiciousIps: suspiciousIps ? Object.keys(suspiciousIps).length : 0, totalAttackAttempts: recentAttacks?.length || 0 } : undefined} />
         </motion.div>
         <motion.div className="lg:col-span-12" variants={itemVariants}>
             <MemoizedTrafficOverTimeChart 
@@ -170,7 +171,7 @@ export function Dashboard({ logData: initialLogData = {}, parsedLines = [] }: Da
             <TopIpAddressesChart data={topIp || {}} suspiciousIps={suspiciousIps || {}} onFilter={handleSetFilter} activeFilter={filters?.ipAddress} />
         </motion.div>
         <motion.div className="md:col-span-1 lg:col-span-6" variants={itemVariants}>
-            <TopRequestedUrlsChart data={topRequestedUrls} />
+            <TopRequestedUrlsChart data={topRequestedUrls || {}} />
         </motion.div>
         <motion.div className="md:col-span-1 lg:col-span-6" variants={itemVariants}>
             <TopReferringUrlsChart data={topReferrers || {}} />

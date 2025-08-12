@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  log-streamer:
+    # Build the image from the Dockerfile in the current directory
+    build: .
+    image: aldotobing/nginxstreamer:latest
+    # Restart the container automatically if it fails
+    restart: always
+    # Container name
+    container_name: nginx-log-streamer
+    # Port mapping: host port -> container port
+    ports:
+      - "1234:1234"
+    # --- IMPORTANT ---
+    # Volume mapping: host path -> container path
+    # This gives the container read-only access to the Nginx log directory on the host machine.
+    volumes:
+      - /var/log/nginx:/var/log/nginx:ro

@@ -1,0 +1,12 @@
+{
+  "name": "nginx-log-streamer",
+  "version": "1.0.0",
+  "description": "Streams Nginx logs via WebSocket",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.17.0"
+  }
+}

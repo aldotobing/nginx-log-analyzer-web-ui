@@ -10,13 +10,10 @@ import {
   FileUp,
   CheckCircle,
 } from "lucide-react";
-
-interface LogStats {
-  [key: string]: any;
-}
+import { LogData } from "./LiveDashboard";
 
 interface LogUploaderProps {
-  onLogParsed: (data: { stats: LogStats; parsedLines: any[] }) => void;
+  onLogParsed: (data: { stats: LogData; parsedLines: any[] }) => void;
 }
 
 export function LogUploader({ onLogParsed }: LogUploaderProps) {

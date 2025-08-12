@@ -195,7 +195,7 @@ export function TopIpAddressesChart({ data, suspiciousIps = {}, className = "", 
     );
   }
 
-  const chartData = {
+  const chartData = useMemo(() => ({
     labels: sortedData.map(([ip]) => ip),
     datasets: [
       {
@@ -222,7 +222,7 @@ export function TopIpAddressesChart({ data, suspiciousIps = {}, className = "", 
         ),
       },
     ],
-  };
+  }), [sortedData, suspiciousIps, activeFilter, isDarkMode]);
 
   const options: ChartOptions<'bar'> = {
     indexAxis: 'y' as const,

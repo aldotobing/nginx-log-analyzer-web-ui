@@ -97,7 +97,7 @@ export function AttackDistributionChart({
     };
   }, [data]);
 
-  const chartData = {
+  const chartData = useMemo(() => ({
     labels: attackLabels,
     datasets: [
       {
@@ -113,11 +113,10 @@ export function AttackDistributionChart({
         pointRadius: isDarkMode ? 7 : 6,
         pointHoverRadius: isDarkMode ? 9 : 8,
         // Add glow effect through shadow
-        shadowBlur: isDarkMode ? 15 : 8,
-        shadowColor: isDarkMode ? 'rgba(255, 0, 0, 0.6)' : 'rgba(220, 38, 38, 0.4)',
+        pointStyle: 'circle',
       },
     ],
-  };
+  }), [attackLabels, attackCounts, isDarkMode]);
 
   const options: ChartOptions<"radar"> = {
     responsive: true,

@@ -102,11 +102,11 @@ export function HttpMethodsChart({ data, className = "", onFilter, activeFilter 
         hoverOffset: 15,
       },
     ],
-  }), [methodsData, isDarkMode, activeFilter]);
+  }), [data, methodsData, isDarkMode, activeFilter]);
 
-  const centerTextPlugin: Plugin<"doughnut"> = {
-    id: 'centerText',
-    afterDraw: (chart) => {
+  const centerTextPlugin = useMemo(() => ({
+    id: 'centerText' as const,
+    afterDraw: (chart: ChartJS) => {
       const { ctx, chartArea } = chart;
       if (!chartArea) return;
       
@@ -124,7 +124,7 @@ export function HttpMethodsChart({ data, className = "", onFilter, activeFilter 
       ctx.fillText('Total Requests', left + width / 2, top + height / 2 + 25);
       ctx.restore();
     }
-  };
+  }), [isDarkMode, total]);
 
   const options: ChartOptions<"doughnut"> = useMemo(() => ({
     responsive: true,
@@ -192,6 +192,7 @@ export function HttpMethodsChart({ data, className = "", onFilter, activeFilter 
       <div className="p-6 space-y-6">
         <div className="h-[200px] sm:h-[250px] md:h-[300px] relative">
           <Doughnut 
+            key={total}
             ref={chartRef} 
             data={chartData} 
             options={options} 

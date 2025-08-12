@@ -100,7 +100,7 @@ export function StatusCodesChart({ data, className = "", onFilter, activeFilter 
     );
   }
 
-  const chartData = {
+  const chartData = useMemo(() => ({
     labels: sortedLabels,
     datasets: [
       {
@@ -113,7 +113,7 @@ export function StatusCodesChart({ data, className = "", onFilter, activeFilter 
         hoverBackgroundColor: sortedLabels.map(label => STATUS_CODE_COLORS[label]?.hover),
       },
     ],
-  };
+  }), [sortedLabels, sortedData, activeFilter]);
 
   const options: ChartOptions<"bar"> = {
     responsive: true,

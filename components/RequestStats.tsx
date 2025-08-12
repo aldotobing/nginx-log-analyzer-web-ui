@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { motion, useSpring, useTransform } from "framer-motion";
 import { Activity, Users, Shield, TrendingUp, AlertTriangle } from "lucide-react";
 
@@ -31,42 +31,55 @@ export function RequestStats({
   },
   className = ""
 }: RequestStatsProps) {
-  // Enhanced counter with animation
-  const AnimatedCounter = ({ value, duration = 2000, prefix = "", suffix = "" }: { 
-    value: number; 
-    duration?: number; 
-    prefix?: string; 
-    suffix?: string; 
-  }) => {
-    const spring = useSpring(0, { 
-      duration: duration,
-      bounce: 0.2
-    });
-    
-    useEffect(() => {
-      spring.set(value);
-    }, [spring, value]);
+  // Refs to store the spring animations for each counter
+  const totalRequestsSpring = useRef(useSpring(data.totalRequests, { 
+    damping: 25,
+    stiffness: 100,
+    mass: 1.2
+  })).current;
+  
+  const uniqueIPsSpring = useRef(useSpring(data.uniqueIPs, { 
+    damping: 25,
+    stiffness: 100,
+    mass: 1.2
+  })).current;
+  
+  const totalAttackAttemptsSpring = useRef(useSpring(data.totalAttackAttempts, { 
+    damping: 25,
+    stiffness: 100,
+    mass: 1.2
+  })).current;
+  
+  const suspiciousIpsSpring = useRef(useSpring(data.suspiciousIps || 0, { 
+    damping: 25,
+    stiffness: 100,
+    mass: 1.2
+  })).current;
 
-    const display = useTransform(spring, (current) => 
-      `${prefix}${Math.round(current).toLocaleString()}${suffix}`
-    );
+  // Update springs when data changes
+  useEffect(() => {
+    totalRequestsSpring.set(data.totalRequests);
+    uniqueIPsSpring.set(data.uniqueIPs);
+    totalAttackAttemptsSpring.set(data.totalAttackAttempts);
+    suspiciousIpsSpring.set(data.suspiciousIps || 0);
+  }, [data, totalRequestsSpring, uniqueIPsSpring, totalAttackAttemptsSpring, suspiciousIpsSpring]);
 
-    return (
-      <motion.span 
-        className="text-3xl lg:text-4xl font-bold tracking-tight"
-        initial={{ opacity: 0, scale: 0.5 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ 
-          type: "spring", 
-          stiffness: 100, 
-          damping: 10,
-          duration: 0.5 
-        }}
-      >
-        {display}
-      </motion.span>
-    );
-  };
+  // Transform springs to display values
+  const totalRequestsDisplay = useTransform(totalRequestsSpring, (value) => 
+    Math.round(value).toLocaleString()
+  );
+  
+  const uniqueIPsDisplay = useTransform(uniqueIPsSpring, (value) => 
+    Math.round(value).toLocaleString()
+  );
+  
+  const totalAttackAttemptsDisplay = useTransform(totalAttackAttemptsSpring, (value) => 
+    Math.round(value).toLocaleString()
+  );
+  
+  const suspiciousIpsDisplay = useTransform(suspiciousIpsSpring, (value) => 
+    Math.round(value).toLocaleString()
+  );
 
   // Calculate derived metrics
   const metrics = useMemo(() => {
@@ -139,6 +152,7 @@ export function RequestStats({
     {
       title: "Total Requests",
       value: data.totalRequests,
+      display: totalRequestsDisplay,
       icon: Activity,
       color: "blue",
       bgGradient: "from-blue-500/10 to-blue-600/10",
@@ -150,6 +164,7 @@ export function RequestStats({
     {
       title: "Unique Visitors",
       value: data.uniqueIPs,
+      display: uniqueIPsDisplay,
       icon: Users,
       color: "green",
       bgGradient: "from-green-500/10 to-green-600/10",
@@ -161,6 +176,7 @@ export function RequestStats({
     {
       title: "Security Events",
       value: data.totalAttackAttempts,
+      display: totalAttackAttemptsDisplay,
       icon: Shield,
       color: "red",
       bgGradient: "from-red-500/10 to-red-600/10",
@@ -172,6 +188,7 @@ export function RequestStats({
     {
       title: "Suspicious IPs",
       value: data.suspiciousIps || 0,
+      display: suspiciousIpsDisplay,
       icon: AlertTriangle,
       color: "orange",
       bgGradient: "from-orange-500/10 to-orange-600/10",
@@ -338,10 +355,19 @@ export function RequestStats({
                     </h3>
                     
                     <div className={stat.textColor}>
-                      <AnimatedCounter 
-                        value={stat.value} 
-                        duration={1500 + (index * 200)}
-                      />
+                      <motion.span 
+                        className="text-3xl lg:text-4xl font-bold tracking-tight"
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ 
+                          type: "spring",
+                          damping: 20,
+  stiffness: 100,
+  mass: 1.2
+                        }}
+                      >
+                        {stat.display}
+                      </motion.span>
                     </div>
 
                     <p className="text-[10px] text-gray-600 dark:text-gray-400 leading-tight">
