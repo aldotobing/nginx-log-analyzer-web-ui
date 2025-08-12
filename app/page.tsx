@@ -87,6 +87,8 @@ export default function Home() {
       </div>
     );
   }
+//test
+console.log('isLoaded', isLoaded);
 
   return (
     <div className={isDarkMode ? "dark" : ""}>
