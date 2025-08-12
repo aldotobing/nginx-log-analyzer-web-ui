@@ -1,5 +1,5 @@
 // components/Dashboard.tsx
-import React, { useMemo, useState, useCallback } from "react";
+import React, { useMemo, useState, useCallback, memo } from "react";
 import { motion } from "framer-motion";
 import { AlertTriangle, Activity, XCircle } from "lucide-react";
 import { RequestStats } from "./RequestStats";
@@ -7,6 +7,9 @@ import { HttpMethodsChart } from "./HttpMethodsChart";
 import { StatusCodesChart } from "./StatusCodesChart";
 import { AttackDistributionChart } from "./AttackDistributionChart";
 import TrafficOverTimeChart from "./TrafficOverTimeChart";
+
+// Memoized version of TrafficOverTimeChart to prevent unnecessary re-renders
+const MemoizedTrafficOverTimeChart = memo(TrafficOverTimeChart);
 import { RecentAttacksTable } from "./RecentAttacksTable";
 import TopIpAddressesChart from "./TopIpAddressChart";
 import TopReferringUrlsChart from "./TopReferringUrlsChart";
@@ -39,24 +42,40 @@ export function Dashboard({ logData: initialLogData = {}, parsedLines = [] }: Da
   };
 
   const filteredData = useMemo(() => {
+    //console.log('=== Dashboard: Filters changed ===', filters);
+    //console.log('Initial parsed lines count:', parsedLines.length);
+    
     if (Object.keys(filters).length === 0) {
+      //console.log('No filters, returning initial data');
       return initialLogData;
     }
 
     const filteredLines = parsedLines.filter(line => {
       return Object.entries(filters).every(([key, value]) => {
+        if (!value) return true;
+        
         if (key === 'status') {
-          return line.status && line.status.startsWith(value.slice(0, 1));
+          if (typeof value === 'string' && value.endsWith('xx')) {
+            const statusPrefix = value.slice(0, 1);
+            return line.status && line.status.toString().startsWith(statusPrefix);
+          }
+          return line.status && line.status.toString() === value.toString();
         }
         if (key === 'ipAddress') {
           return line.ipAddress === value;
         }
-        // Add other filter conditions here as needed
+        if (key === 'method') {
+          return line.method && line.method.toLowerCase() === value.toLowerCase();
+        }
         return line[key] === value;
       });
     });
 
-    return aggregateLogData(filteredLines);
+    //console.log('Filtering with', filteredLines.length, 'lines after applying filters');
+    const result = aggregateLogData(filteredLines, filters);
+    //console.log('Filtered data result - traffic data points:', result.trafficOverTime.filter(x => x.count > 0).length, 'out of', result.trafficOverTime.length);
+    //console.log('First few traffic data points:', result.trafficOverTime.filter(x => x.count > 0).slice(0, 3));
+    return result;
   }, [filters, parsedLines, initialLogData]);
 
   const {
@@ -137,7 +156,10 @@ export function Dashboard({ logData: initialLogData = {}, parsedLines = [] }: Da
           <RequestStats data={{...requestStats, suspiciousIps: suspiciousIps ? Object.keys(suspiciousIps).length : 0, totalAttackAttempts: recentAttacks?.length || 0 }} />
         </motion.div>
         <motion.div className="lg:col-span-12" variants={itemVariants}>
-            <TrafficOverTimeChart data={trafficOverTime || []} />
+            <MemoizedTrafficOverTimeChart 
+              data={trafficOverTime || []} 
+              key={JSON.stringify(filters)} // Force re-render when filters change
+            />
         </motion.div>
         <motion.div className="md:col-span-1 lg:col-span-6" variants={itemVariants}>
             <HttpMethodsChart data={httpMethods || {}} onFilter={handleSetFilter} activeFilter={filters?.method} />

@@ -19,7 +19,7 @@ interface SuspiciousIpInfo {
   statusCodes: StatusCodeStats;
 }
 
-export const aggregateLogData = (parsedLines: any[]) => {
+export const aggregateLogData = (parsedLines: any[], filters: Record<string, any> = {}) => {
   const stats = {
     requestStats: {
       totalRequests: 0,
@@ -64,7 +64,58 @@ export const aggregateLogData = (parsedLines: any[]) => {
     }
   };
 
-  parsedLines.forEach(parsedLine => {
+  //console.log('=== Starting to process', parsedLines.length, 'log entries with filters:', filters);
+  
+  parsedLines.forEach((parsedLine, index) => {
+    // Apply filters if any
+    let filterMatch = true;
+    
+    for (const [key, value] of Object.entries(filters)) {
+      if (!value) continue;
+      
+      if (key === 'status') {
+        const statusStr = parsedLine.status?.toString() || '';
+        let matches = false;
+        
+        if (typeof value === 'string' && value.endsWith('xx')) {
+          const statusPrefix = value.slice(0, 1);
+          matches = statusStr.startsWith(statusPrefix);
+          if (!matches) {
+            //console.log(`[${index}] Filtered out - status ${statusStr} doesn't match ${value}`);
+            filterMatch = false;
+            break;
+          }
+        } else {
+          matches = statusStr === value.toString();
+          if (!matches) {
+            //console.log(`[${index}] Filtered out - status ${statusStr} doesn't equal ${value}`);
+            filterMatch = false;
+            break;
+          }
+        }
+      }
+      else if (key === 'ipAddress') {
+        if (parsedLine.ipAddress !== value) {
+          //console.log(`[${index}] Filtered out - IP ${parsedLine.ipAddress} doesn't match ${value}`);
+          filterMatch = false;
+          break;
+        }
+      }
+      else if (key === 'method') {
+        if (!parsedLine.method || parsedLine.method.toLowerCase() !== value.toLowerCase()) {
+          //console.log(`[${index}] Filtered out - method ${parsedLine.method} doesn't match ${value}`);
+          filterMatch = false;
+          break;
+        }
+      }
+      else if (parsedLine[key] !== value) {
+        //console.log(`[${index}] Filtered out - ${key} ${parsedLine[key]} doesn't match ${value}`);
+        filterMatch = false;
+        break;
+      }
+    }
+
+    if (!filterMatch) return;
     const {
       ipAddress,
       remoteUser,
@@ -82,6 +133,18 @@ export const aggregateLogData = (parsedLines: any[]) => {
 
     initIpStats(ipAddress);
     const bytes = parseInt(bodyBytesSent, 10) || 0;
+    
+    // Log the first few lines to see what we're working with
+    // if (index < 3) {
+    //   console.log(`Processing log entry ${index}:`, {
+    //     ipAddress,
+    //     method,
+    //     status,
+    //     path,
+    //     timestamp,
+    //     attackType: attackType || 'none'
+    //   });
+    // }
 
     stats.ipStats.requestCounts[ipAddress]++;
     stats.ipStats.bandwidthUsage[ipAddress] += bytes;
@@ -110,13 +173,24 @@ export const aggregateLogData = (parsedLines: any[]) => {
     stats.requestedUrlCounts[path] = (stats.requestedUrlCounts[path] || 0) + 1;
 
     try {
-      const date = new Date(timestamp.replace(/\[|\]/g, ""));
-      const hour = date.getHours();
-      if (!isNaN(hour) && hour >= 0 && hour < 24) {
-        stats.trafficOverTime[hour].count++;
+      // Parse the timestamp in format: 11/Aug/2025:03:30:00 +0700
+      const dateParts = timestamp.replace(/\[|\]/g, "").split(/[\/: ]+/);
+      if (dateParts.length >= 4) {
+        const [day, monthStr, year, hourStr] = dateParts;
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const monthIndex = months.findIndex(m => m === monthStr);
+        
+        if (monthIndex !== -1) {
+          const hour = parseInt(hourStr, 10);
+          if (!isNaN(hour) && hour >= 0 && hour < 24) {
+            stats.trafficOverTime[hour].count++;
+            return; // Successfully processed
+          }
+        }
       }
+      console.warn('Could not parse timestamp:', timestamp);
     } catch (error) {
-      // ignore
+      console.error('Error parsing timestamp:', timestamp, error);
     }
 
     if (attackType) {
@@ -133,10 +207,13 @@ export const aggregateLogData = (parsedLines: any[]) => {
     }
   });
 
-  const processedTrafficData = stats.trafficOverTime.map((entry) => ({
-    hour: entry.hour,
+  // Convert the traffic data to the expected format
+  const processedTrafficData = stats.trafficOverTime.map((entry, index) => ({
+    hour: index, // Use the array index as the hour
     count: entry.count,
   }));
+  
+  //console.log('Processed traffic data:', processedTrafficData.filter(x => x.count > 0));
 
   return {
     requestStats: {

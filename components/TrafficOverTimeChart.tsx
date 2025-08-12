@@ -49,6 +49,7 @@ export default function TrafficOverTimeChart({
   data = [],
   className = ""
 }: TrafficOverTimeChartProps) {
+  //console.log('TrafficOverTimeChart received data:', data);
   const [timeFrame, setTimeFrame] = useState<TimeFrame>("hourly");
   const [isMounted, setIsMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -59,6 +60,7 @@ export default function TrafficOverTimeChart({
 
   // Process data based on timeframe
   const processedData = useMemo(() => {
+    //console.log('Processing data with timeframe:', timeFrame, 'data length:', data.length);
     if (!data.length) {
       return {
         labels: [],
