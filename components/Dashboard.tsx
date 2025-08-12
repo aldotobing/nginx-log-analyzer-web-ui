@@ -162,7 +162,7 @@ export function Dashboard({ stats: initialLogData = null, parsedLines = [] }: Da
             <HttpMethodsChart data={httpMethods || {}} parsedLines={parsedLines} onFilter={handleSetFilter} activeFilter={filters?.method} />
         </motion.div>
         <motion.div className="md:col-span-1 lg:col-span-6" variants={itemVariants}>
-            <StatusCodesChart data={statusCodes || {}} onFilter={handleSetFilter} activeFilter={filters?.status} />
+            <StatusCodesChart data={statusCodes || {}} parsedLines={parsedLines} onFilter={handleSetFilter} activeFilter={filters?.status} />
         </motion.div>
         <motion.div className="md:col-span-1 lg:col-span-6" variants={itemVariants}>
             <AttackDistributionChart data={attackDistribution || {}} onFilter={handleSetFilter} activeFilter={filters?.attackType} />
