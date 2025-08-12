@@ -47,13 +47,17 @@ const HTTP_METHOD_COLORS: Readonly<
 
 interface HttpMethodsChartProps {
   data: Record<string, number>;
+  parsedLines?: any[];
   className?: string;
   onFilter?: (key: string, value: any) => void;
   activeFilter?: string | null;
 }
 
-export function HttpMethodsChart({ data, className = "", onFilter, activeFilter }: HttpMethodsChartProps) {
+export function HttpMethodsChart({ data, parsedLines = [], className = "", onFilter, activeFilter }: HttpMethodsChartProps) {
   const [isDarkMode, setIsDarkMode] = useState(false);
+  const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
+  const [filteredLogs, setFilteredLogs] = useState<any[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const chartRef = useRef<ChartJS<"doughnut">>(null);
 
   useEffect(() => {
@@ -66,6 +70,20 @@ export function HttpMethodsChart({ data, className = "", onFilter, activeFilter 
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
     return () => observer.disconnect();
   }, []);
+
+  const handleMethodClick = (method: string) => {
+    // Set the filter
+    if (onFilter) {
+      const newFilterValue = activeFilter === method ? null : method;
+      onFilter('method', newFilterValue);
+    }
+    
+    // Show logs for this method
+    const logs = parsedLines.filter(line => line.method === method);
+    setFilteredLogs(logs);
+    setSelectedMethod(method);
+    setIsModalOpen(true);
+  };
 
   const total = useMemo(() => Object.values(data).reduce((sum, value) => sum + value, 0), [data]);
 
@@ -140,12 +158,21 @@ export function HttpMethodsChart({ data, className = "", onFilter, activeFilter 
     maintainAspectRatio: false,
     cutout: "70%",
     onClick: (event: ChartEvent, elements: ActiveElement[], chart: ChartJS) => {
-      if (elements.length > 0 && onFilter && chart.data.labels) {
+      if (elements.length > 0 && chart.data.labels) {
         const elementIndex = elements[0].index;
         const clickedLabel = chart.data.labels[elementIndex] as string;
         
-        const newFilterValue = activeFilter === clickedLabel ? null : clickedLabel;
-        onFilter('method', newFilterValue);
+        // Set the filter
+        if (onFilter) {
+          const newFilterValue = activeFilter === clickedLabel ? null : clickedLabel;
+          onFilter('method', newFilterValue);
+        }
+        
+        // Show logs for this method
+        const logs = parsedLines.filter(line => line.method === clickedLabel);
+        setFilteredLogs(logs);
+        setSelectedMethod(clickedLabel);
+        setIsModalOpen(true);
       }
     },
     onHover: (event: ChartEvent, elements: ActiveElement[], chart: ChartJS) => {
@@ -221,7 +248,7 @@ export function HttpMethodsChart({ data, className = "", onFilter, activeFilter 
               }`}
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.98 }}
-              onClick={() => onFilter && onFilter('method', activeFilter === item.method ? null : item.method)}
+              onClick={() => handleMethodClick(item.method)}
               onMouseEnter={() => {
                 if (chartRef.current) {
                   chartRef.current.setActiveElements([{ datasetIndex: 0, index }]);
@@ -250,6 +277,67 @@ export function HttpMethodsChart({ data, className = "", onFilter, activeFilter 
         </div>
       </div>
     </div>
+    
+    {/* Modal for showing logs */}
+    {isModalOpen && (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-4xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+          <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+              Logs for Method: {selectedMethod}
+            </h3>
+            <button 
+              onClick={() => setIsModalOpen(false)}
+              className="text-gray-400 hover:text-gray-500 dark:text-gray-300 dark:hover:text-gray-200"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+          </div>
+          
+          <div className="overflow-y-auto flex-grow">
+            {filteredLogs.length === 0 ? (
+              <div className="p-6 text-center text-gray-500 dark:text-gray-400">
+                No logs found for this method.
+              </div>
+            ) : (
+              <div className="p-4 space-y-3">
+                {filteredLogs.slice(0, 100).map((log, index) => (
+                  <div key={index} className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4 text-sm">
+                    <div className="font-medium text-gray-900 dark:text-white">
+                      {log.ipAddress} - {log.method} {log.path}
+                    </div>
+                    <div className="text-gray-600 dark:text-gray-300 mt-1">
+                      Status: {log.status} | Size: {log.bodyBytesSent} | Time: {log.timestamp}
+                    </div>
+                    {log.userAgent && (
+                      <div className="text-gray-500 dark:text-gray-400 mt-1 truncate">
+                        User Agent: {log.userAgent}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {filteredLogs.length > 100 && (
+                  <div className="text-center text-gray-500 dark:text-gray-400 p-4">
+                    Showing first 100 of {filteredLogs.length} logs
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          
+          <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end">
+            <button
+              onClick={() => setIsModalOpen(false)}
+              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
   );
 }
 

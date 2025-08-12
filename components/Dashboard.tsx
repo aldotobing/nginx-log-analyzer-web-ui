@@ -159,7 +159,7 @@ export function Dashboard({ stats: initialLogData = null, parsedLines = [] }: Da
             />
         </motion.div>
         <motion.div className="md:col-span-1 lg:col-span-6" variants={itemVariants}>
-            <HttpMethodsChart data={httpMethods || {}} onFilter={handleSetFilter} activeFilter={filters?.method} />
+            <HttpMethodsChart data={httpMethods || {}} parsedLines={parsedLines} onFilter={handleSetFilter} activeFilter={filters?.method} />
         </motion.div>
         <motion.div className="md:col-span-1 lg:col-span-6" variants={itemVariants}>
             <StatusCodesChart data={statusCodes || {}} onFilter={handleSetFilter} activeFilter={filters?.status} />
