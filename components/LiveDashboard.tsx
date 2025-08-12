@@ -18,10 +18,29 @@ const parseLogLine = (line: string) => {
 
     const { ip, timestamp, request, code, size, referrer, agent } = match.groups;
     
-    // Split the request into method and URL, handling empty requests.
-    const requestParts = request.split(' ');
-    const method = requestParts[0] || 'N/A';
-    const url = requestParts[1] || 'N/A';
+    // Define valid HTTP methods
+    const validHttpMethods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS', 'TRACE', 'CONNECT'];
+    
+    // Initialize method and url
+    let method = 'N/A';
+    let url = 'N/A';
+    
+    // Only parse method and URL if request is not empty
+    if (request) {
+      // Split the request into parts
+      const requestParts = request.split(' ');
+      
+      // Check if the first part is a valid HTTP method
+      if (requestParts.length > 0 && validHttpMethods.includes(requestParts[0])) {
+        method = requestParts[0];
+        // URL is typically the second part if it exists
+        url = requestParts.length > 1 ? requestParts[1] : 'N/A';
+      } else {
+        // If it's not a valid method, classify it as an attack or malformed request
+        method = 'MALFORMED';
+        url = request; // Keep the full request for analysis
+      }
+    }
 
     return {
       ipAddress: ip,

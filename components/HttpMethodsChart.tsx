@@ -23,6 +23,9 @@ const HTTP_METHOD_DESCRIPTIONS: Readonly<Record<string, string>> = {
   PATCH: "Applies partial modifications to a resource",
   OPTIONS: "Describes communication options for the target resource",
   HEAD: "Same as GET but returns only HTTP headers",
+  TRACE: "Performs a message loop-back test",
+  CONNECT: "Establishes a tunnel to the server",
+  MALFORMED: "Malformed or attack requests",
 };
 
 const HTTP_METHOD_COLORS: Readonly<
@@ -35,6 +38,9 @@ const HTTP_METHOD_COLORS: Readonly<
   PATCH: { base: "#a855f7", hover: "#9333ea" }, // purple-500, purple-600
   OPTIONS: { base: "#64748b", hover: "#475569" }, // slate-500, slate-600
   HEAD: { base: "#ec4899", hover: "#db2777" }, // pink-500, pink-600
+  TRACE: { base: "#8b5cf6", hover: "#7c3aed" }, // violet-500, violet-600
+  CONNECT: { base: "#14b8a6", hover: "#0d9488" }, // teal-500, teal-600
+  MALFORMED: { base: "#f43f5e", hover: "#e11d48" }, // rose-500, rose-600
 };
 
 interface HttpMethodsChartProps {
@@ -64,6 +70,7 @@ export function HttpMethodsChart({ data, className = "", onFilter, activeFilter 
   const methodsData = useMemo(() => {
     if (total === 0) return [];
     return Object.entries(data)
+      .filter(([method]) => method.length <= 20) // Filter out extremely long method names that are likely malicious
       .map(([method, count]) => ({
         method,
         count,
@@ -234,7 +241,7 @@ export function HttpMethodsChart({ data, className = "", onFilter, activeFilter 
                     : (HTTP_METHOD_COLORS[item.method]?.base ?? '#64748b') 
                 }}
               />
-              <span className="font-medium text-gray-700 dark:text-gray-200">{item.method}</span>
+              <span className="font-medium text-gray-700 dark:text-gray-200">{item.method.length > 20 ? `${item.method.substring(0, 17)}...` : item.method}</span>
               <span className="text-gray-500 dark:text-gray-300/80">({item.percentage}%)</span>
             </motion.div>
           ))}
