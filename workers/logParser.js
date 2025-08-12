@@ -79,38 +79,16 @@ self.onmessage = (e) => {
     ].join('|'), 'i'),
 
     "Command Injection": new RegExp([
-      // Command substitution (very high confidence)
-      "\\$\\s*\\([^)]*\\)",                 // $(command)
-      "`[^`]+`",                            // `command`
-
-      // FIXED: Command chaining - require DOUBLE && or || (not single &)
-      "[;]\\s*[a-zA-Z][a-zA-Z0-9_-]*",      // ; command (semicolon only)
-      "\\|\\|\\s*[a-zA-Z][a-zA-Z0-9_-]*",   // || command (double pipe)
-      "&&\\s*[a-zA-Z][a-zA-Z0-9_-]*",       // && command (double ampersand)
-
-      // Pipe to commands (not just any pipe)
-      "\\|\\s*(?:grep|awk|sed|sort|head|tail|cut|tr)\\b",
-
-      // Redirection in command context (not in URLs)
-      "[^?&]\\s+[><]+\\s*(?:/|\\w+/)",      // redirection to paths (not after ? or &)
-
-      // Dangerous function calls
-      "\\b(?:exec|system|passthru|shell_exec|popen|proc_open|pcntl_exec)\\s*\\(",
-
-      // Explicit dangerous commands with parameters
-      "\\b(?:rm|del)\\s+[/-]",              // rm/del with flags
-      "\\b(?:wget|curl)\\s+https?://",       // network downloads
-      "\\b(?:nc|netcat)\\s+\\d",            // netcat with ports
-      "\\b(?:ssh|telnet)\\s+\\d",           // remote connections
-
-      // Commands with absolute paths (not in URL context)
-      "[^/\\w&?](?:cat|ls|pwd|whoami|uname)\\s+/",  // commands with absolute paths
-
-      // Script execution
-      "\\b(?:bash|sh|zsh|powershell|cmd)\\s+[/-]", // shells with parameters
-
-      // Environment variable access in suspicious context
-      "\\$\\{?\\w+\\}?\\s*[;&|]"            // $VAR followed by command separator
+      // More comprehensive command injection patterns
+      "\\b(?:cat|ls|uname|whoami|pwd|rm|touch|wget|curl|scp|rsync|ftp|nc|ncat|nmap|ping|traceroute|telnet|ssh|bash|sh|zsh|dash|powershell|cmd\\.exe|cmd\\/c|\\|\\||&&|;)\\b",
+      "\\$\s*\\(.*\\)",              // $(command)
+      "`.*`",                         // `command`
+      "\\|\\|\\s*\\w+",               // || command
+      "&&\\s*\\w+",                   // && command
+      "\\|\\s*\\w+",                  // | command
+      ">\\s*\\w+",                    // > file
+      "<\\s*\\w+",                    // < file
+      "\\b(?:exec|system|passthru|shell_exec|popen|proc_open|pcntl_exec)\\s*\\("
     ].join('|'), 'i'),
 
     "Directory Traversal": new RegExp(
@@ -358,10 +336,10 @@ self.onmessage = (e) => {
     topReferrers:
       format === "nginx"
         ? Object.fromEntries(
-          Object.entries(stats.referrerCounts)
-            .sort(([, a], [, b]) => b - a)
-            .slice(0, 10)
-        )
+            Object.entries(stats.referrerCounts)
+              .sort(([, a], [, b]) => b - a)
+              .slice(0, 10)
+          )
         : {},
     topRequestedUrls: Object.fromEntries(
       Object.entries(stats.requestedUrlCounts)
