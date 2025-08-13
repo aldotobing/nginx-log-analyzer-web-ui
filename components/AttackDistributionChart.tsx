@@ -63,64 +63,41 @@ export function AttackDistributionChart({
   const { totalAttacks, attackLabels, attackCounts, metrics } = useMemo(() => {
     console.log('AttackDistributionChart - Raw data:', data);
     
-    // Define all possible attack types to maintain consistent chart structure
-    const allAttackTypes = [
-      "SQL Injection",
-      "XSS", 
-      "Command Injection",
-      "Directory Traversal",
-      "Brute Force"
-    ];
+    // When there's an active filter, we want to show all attack types but highlight the filtered one
+    // The parent component has already filtered the data, so we just need to work with what we have
+    const displayData = { ...data };
     
-    // When there's an active filter, the parent has set non-matching types to 0
-    // We still want to show all categories to maintain the radar chart structure
-    const displayData: Record<string, number> = {};
+    const total = Object.values(displayData).reduce((sum, value) => sum + (Number(value) || 0), 0);
+    console.log('AttackDistributionChart - Total attacks:', total);
     
-    // Initialize all attack types with their values (or 0 if not present)
-    allAttackTypes.forEach(type => {
-      displayData[type] = data[type] || 0;
-    });
-    
-    // Calculate total based on the original data, not the display data with zeros
-    const actualTotal = Object.values(data).reduce((sum, value) => sum + (Number(value) || 0), 0);
-    console.log('AttackDistributionChart - Total attacks:', actualTotal);
-    
-    if (!data || Object.keys(data).length === 0) {
+    if (!data || Object.keys(displayData).length === 0) {
       console.log('AttackDistributionChart - No data or zero total attacks');
       return { totalAttacks: 0, attackLabels: [], attackCounts: [], metrics: [] };
     }
 
-    // Create arrays maintaining the order of allAttackTypes
-    // but put the active filter first if it exists
-    const labels: string[] = [];
-    const counts: number[] = [];
-    
-    // Add active filter first if it exists
-    if (activeFilter && allAttackTypes.includes(activeFilter)) {
-      labels.push(activeFilter);
-      counts.push(displayData[activeFilter]);
-    }
-    
-    // Add remaining attack types
-    allAttackTypes.forEach(type => {
-      if (type !== activeFilter) {
-        labels.push(type);
-        counts.push(displayData[type]);
+    // Sort all data but put the active filter first if it exists
+    const sorted = Object.entries(displayData).sort(([aKey, aVal], [bKey, bVal]) => {
+      // If we have an active filter, put it first
+      if (activeFilter) {
+        if (aKey === activeFilter) return -1;
+        if (bKey === activeFilter) return 1;
       }
+      // Otherwise sort by count descending
+      return bVal - aVal;
     });
     
-    // Find top threat (excluding zero values)
-    const nonZeroEntries = Object.entries(data).filter(([, value]) => value > 0);
-    const sortedNonZero = nonZeroEntries.sort(([, a], [, b]) => b - a);
-    const [topKey, topValue] = sortedNonZero[0] || [];
-    const topPct = topValue ? (topValue / actualTotal) * 100 : 0;
+    const labels = sorted.map(([key]) => key);
+    const counts = sorted.map(([, value]) => value);
+
+    const [topKey, topValue] = sorted[0] || [];
+    const topPct = topValue ? (topValue / total) * 100 : 0;
 
     return {
-      totalAttacks: actualTotal,
+      totalAttacks: total,
       attackLabels: labels,
       attackCounts: counts,
       metrics: [
-        { title: "Total Attacks", value: actualTotal.toLocaleString(), icon: ShieldCheck, color: "red" },
+        { title: "Total Attacks", value: total.toLocaleString(), icon: ShieldCheck, color: "red" },
         {
           title: "Top Threat",
           value: topKey || "None",
@@ -132,7 +109,7 @@ export function AttackDistributionChart({
         },
         {
           title: "Attack Varieties",
-          value: nonZeroEntries.length,
+          value: labels.length,
           icon: ListTree,
           color: "purple",
           subtitle: "Unique attack types detected",
@@ -152,41 +129,17 @@ export function AttackDistributionChart({
         backgroundColor: isDarkMode ? 'rgba(255, 0, 0, 0.2)' : 'rgba(220, 38, 38, 0.15)',
         borderColor: isDarkMode ? 'rgba(255, 50, 50, 1)' : 'rgba(220, 38, 38, 1)',
         borderWidth: isDarkMode ? 4 : 3,
-        pointBackgroundColor: attackLabels.map((label, index) => {
-          // Highlight the active filter with a different color
-          if (activeFilter && label === activeFilter) {
-            return isDarkMode ? 'rgba(255, 215, 0, 1)' : 'rgba(255, 215, 0, 1)'; // Gold color for active filter
-          }
-          return isDarkMode ? 'rgba(255, 100, 100, 1)' : 'rgba(220, 38, 38, 1)';
-        }),
+        pointBackgroundColor: isDarkMode ? 'rgba(255, 100, 100, 1)' : 'rgba(220, 38, 38, 1)',
         pointBorderColor: isDarkMode ? 'rgba(255, 200, 200, 1)' : '#fff',
-        pointHoverBackgroundColor: attackLabels.map((label, index) => {
-          // Highlight the active filter with a different hover color
-          if (activeFilter && label === activeFilter) {
-            return isDarkMode ? 'rgba(255, 215, 0, 1)' : 'rgba(255, 215, 0, 1)'; // Gold color for active filter
-          }
-          return isDarkMode ? 'rgba(255, 0, 0, 1)' : '#fff';
-        }),
+        pointHoverBackgroundColor: isDarkMode ? 'rgba(255, 0, 0, 1)' : '#fff',
         pointHoverBorderColor: isDarkMode ? 'rgba(255, 255, 255, 1)' : 'rgba(220, 38, 38, 1)',
-        pointRadius: attackLabels.map((label, index) => {
-          // Make the active filter point larger
-          if (activeFilter && label === activeFilter) {
-            return isDarkMode ? 9 : 8;
-          }
-          return isDarkMode ? 7 : 6;
-        }),
-        pointHoverRadius: attackLabels.map((label, index) => {
-          // Make the active filter point larger on hover
-          if (activeFilter && label === activeFilter) {
-            return isDarkMode ? 11 : 10;
-          }
-          return isDarkMode ? 9 : 8;
-        }),
+        pointRadius: isDarkMode ? 7 : 6,
+        pointHoverRadius: isDarkMode ? 9 : 8,
         // Add glow effect through shadow
         pointStyle: 'circle',
       },
     ],
-  }), [attackLabels, attackCounts, isDarkMode, activeFilter]);
+  }), [attackLabels, attackCounts, isDarkMode]);
 
   const options: ChartOptions<"radar"> = {
     responsive: true,
@@ -218,13 +171,7 @@ export function AttackDistributionChart({
         cornerRadius: 8,
         displayColors: false,
         callbacks: {
-          title: (ctx) => {
-            const label = ctx[0].label as string;
-            if (activeFilter && label === activeFilter) {
-              return `Attack Type: ${label} (FILTERED)`;
-            }
-            return `Attack Type: ${label}`;
-          },
+          title: (ctx) => `Attack Type: ${ctx[0].label}`,
           label: (ctx) => {
             const count = ctx.raw as number;
             const pct = totalAttacks > 0 ? ((count / totalAttacks) * 100).toFixed(1) : 0;
@@ -258,13 +205,9 @@ export function AttackDistributionChart({
     },
   };
 
-  // Check if we have any non-zero values in the original data
   const hasNoData = Object.values(data).every(val => val === 0 || val === undefined);
   
-  // But if we have an active filter that exists in the data, we should show the chart
-  const shouldShowChart = !hasNoData || (activeFilter && data[activeFilter] > 0);
-  
-  if (!shouldShowChart) {
+  if (hasNoData) {
     return (
       <div className={className}>
         <div className="p-6 pb-4 border-b border-gray-200/50 dark:border-gray-700/50">
@@ -307,9 +250,7 @@ export function AttackDistributionChart({
           <span>Attack Distribution</span>
         </h2>
         <p className="text-gray-600 dark:text-gray-400 mt-1">
-          {activeFilter 
-            ? `Distribution of ${totalAttacks.toLocaleString()} threats. Showing filtered view for "${activeFilter}".` 
-            : `Distribution of ${totalAttacks.toLocaleString()} threats. Click a point to filter.`}
+          Distribution of {totalAttacks.toLocaleString()} threats. Click a point to filter.
         </p>
       </div>
 
