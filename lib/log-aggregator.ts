@@ -214,12 +214,12 @@ export const aggregateLogData = (parsedLines: any[], filters: Record<string, any
 
     if (attackType) {
       // console.log('ATTACK COUNTING SECTION REACHED for:', attackType);
-      console.log('Aggregator found attack:', attackType, 'for line:', {
-        ipAddress,
-        method,
-        path,
-        attackType
-      });
+      // console.log('Aggregator found attack:', attackType, 'for line:', {
+      //   ipAddress,
+      //   method,
+      //   path,
+      //   attackType
+      // });
       
       stats.attackDistribution[attackType]++;
       stats.requestStats.totalAttackAttempts++;
