@@ -60,6 +60,22 @@ wss.on('connection', (ws, req) => {
   const protocol = req.socket.encrypted ? 'wss' : 'ws';
   console.log(`Client connected from ${clientIp} via ${protocol}`);
 
+  // Handle ping messages from client
+  ws.on('message', (message) => {
+    try {
+      const data = JSON.parse(message);
+      if (data.type === 'ping') {
+        // Respond with pong
+        ws.send(JSON.stringify({ type: 'pong' }));
+        return;
+      }
+    } catch (e) {
+      // Not a JSON message, continue with normal processing
+    }
+    
+    // For any other messages, we don't need to do anything
+  });
+
   // Start tailing the Nginx access log file
   const tail = spawn('tail', ['-f', '-n', TAIL_LINES, LOG_FILE_PATH]);
 

@@ -396,8 +396,17 @@ export function LiveDashboard({ wsUrl: initialWsUrl }: { wsUrl: string }) {
         if (document.visibilityState === 'visible') {
           console.log('Tab became visible, checking connection...');
           
-          // Always force a reconnection when tab becomes visible
-          if (wsRef.current) {
+          // Check if connection is still alive before forcing reconnection
+          if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+            // Connection is still open, check if we've received messages recently
+            const timeSinceLastMessage = Date.now() - lastMessageTime.current;
+            // If we haven't received a message in over 60 seconds, force reconnection
+            if (timeSinceLastMessage > 60000) {
+              console.log('Forcing WebSocket reconnection due to inactivity...');
+              // Close with a custom code that indicates we want to reconnect
+              wsRef.current.close(4001, 'Tab became visible after inactivity');
+            }
+          } else if (wsRef.current) {
             console.log('Forcing WebSocket reconnection...');
             // Close with a custom code that indicates we want to reconnect
             wsRef.current.close(4001, 'Tab became visible');
@@ -419,9 +428,11 @@ export function LiveDashboard({ wsUrl: initialWsUrl }: { wsUrl: string }) {
 
   // Initial connection
   useEffect(() => {
-    // Reset log data when connecting to a new URL
-    setLogData(null);
-    setParsedLines([]);
+    // Only reset log data when connecting to a new URL (not on reconnections)
+    if (wsUrl !== wsRef.current?.url) {
+      setLogData(null);
+      setParsedLines([]);
+    }
     connectWebSocket(wsUrl);
     
     return () => {
