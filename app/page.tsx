@@ -171,9 +171,9 @@ export default function Home() {
               </ul>
               <p className="mt-1">Note: WSS requires a valid SSL certificate.</p>
             </div>
-            <div className="flex items-start space-x-2 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg mt-2">
+            <div className="flex items-start space-x-2 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg mt-2">
               <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-              <p>Currently supports Nginx log format only. Apache support coming soon.</p>
+              <p>Make your own custom WebSocket to stream Nginx or Apache logs. Check out <a href="https://github.com/aldotobing/nginx-log-streamer" target="_blank" rel="noopener noreferrer" className="font-semibold underline hover:text-blue-700 dark:hover:text-blue-300">nginx-log-streamer</a></p>
             </div>
           </div>
         </motion.div>
