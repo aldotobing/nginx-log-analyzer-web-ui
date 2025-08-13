@@ -268,17 +268,38 @@ export function StatusCodesChart({ data, className = "", onFilter, activeFilter,
       
       {activeFilter && (
         <div className="flex justify-center pt-4">
-          <button
+          <motion.button
             onClick={() => {
               if (onFilter) {
                 onFilter('status', null);
               }
             }}
-            className="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg transition-colors duration-200 text-sm font-medium flex items-center gap-2"
+            className="group px-4 py-2 rounded-lg transition-all duration-300 text-sm font-medium flex items-center gap-2 relative"
+            style={{
+              backgroundColor: STATUS_CODE_COLORS[activeFilter]?.base ?? '#64748b',
+            }}
+            whileHover={{ 
+              scale: 1.05,
+              backgroundColor: STATUS_CODE_COLORS[activeFilter]?.hover ?? '#475569'
+            }}
+            whileTap={{ scale: 0.95 }}
+            animate={{
+              scale: [1, 1.05, 1],
+              transition: {
+                duration: 1.5,
+                repeat: Infinity,
+                repeatType: "reverse"
+              }
+            }}
           >
-            <X className="w-4 h-4" />
-            Clear Filter
-          </button>
+            <X className="w-4 h-4 text-white" />
+            <span className="text-white">Clear Filter</span>
+            
+            {/* Tooltip */}
+            <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs py-1 px-2 rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none whitespace-nowrap">
+              Remove {activeFilter} filter
+            </span>
+          </motion.button>
         </div>
       )}
       
