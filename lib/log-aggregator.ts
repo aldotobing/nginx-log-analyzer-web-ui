@@ -20,7 +20,7 @@ interface SuspiciousIpInfo {
 }
 
 export const aggregateLogData = (parsedLines: any[], filters: Record<string, any> = {}) => {
-  // console.log('Aggregating log data, parsedLines:', parsedLines.length);
+  // console.log('Aggregating log data, total parsedLines:', parsedLines.length);
   
   const stats = {
     requestStats: {
@@ -68,9 +68,9 @@ export const aggregateLogData = (parsedLines: any[], filters: Record<string, any
 
   //console.log('=== Starting to process', parsedLines.length, 'log entries with filters:', filters);
   
+  let validLinesCount = 0;
+  
   parsedLines.forEach((parsedLine, index) => {
-    // console.log(`Processing line ${index}:`, parsedLine);
-    
     // Apply filters if any
     let filterMatch = true;
     
@@ -120,7 +120,7 @@ export const aggregateLogData = (parsedLines: any[], filters: Record<string, any
     }
 
     if (!filterMatch) {
-        // console.log(`Line ${index} filtered out`);
+      console.log(`Line ${index} filtered out`);
       return;
     }
     
@@ -146,10 +146,11 @@ export const aggregateLogData = (parsedLines: any[], filters: Record<string, any
     // });
 
     if (!ipAddress || !method || !status) {
-      // console.log(`Line ${index} missing required fields, skipping`);
+      console.log(`Line ${index} missing required fields, skipping`);
       return;
     }
 
+    validLinesCount++;
     initIpStats(ipAddress);
     const bytes = parseInt(bodyBytesSent, 10) || 0;
     
@@ -192,38 +193,64 @@ export const aggregateLogData = (parsedLines: any[], filters: Record<string, any
     stats.requestedUrlCounts[path] = (stats.requestedUrlCounts[path] || 0) + 1;
 
     try {
-      // Parse the timestamp in format: 11/Aug/2025:03:30:00 +0700
-      const dateParts = timestamp.replace(/\[|\]/g, "").split(/[\/: ]+/);
-      if (dateParts.length >= 4) {
-        const [day, monthStr, year, hourStr] = dateParts;
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        const monthIndex = months.findIndex(m => m === monthStr);
-        
-        if (monthIndex !== -1) {
-          const hour = parseInt(hourStr, 10);
-          if (!isNaN(hour) && hour >= 0 && hour < 24) {
-            stats.trafficOverTime[hour].count++;
-            // Removed the return statement that was preventing attack counting
+      // Parse the timestamp in format: 13/Aug/2025:21:16:15 +0700
+      // First, remove the square brackets if present
+      const cleanTimestamp = timestamp.replace(/^\[|\]$/g, '');
+      
+      // Split into date/time and timezone parts
+      const [dateTimePart, timezonePart] = cleanTimestamp.split(' ');
+      if (!dateTimePart) {
+        console.warn('No datetime part found in timestamp:', timestamp);
+      } else {
+        // Split the date/time part
+        const [datePart, timePart] = dateTimePart.split(':');
+        if (datePart && timePart) {
+          // Split the date part (13/Aug/2025)
+          const [day, monthStr, year] = datePart.split('/');
+          const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+          const monthIndex = months.findIndex(m => m === monthStr);
+          
+          if (monthIndex !== -1) {
+            // Get the hour from the time part (21:16:15)
+            const hour = parseInt(timePart.split(':')[0], 10);
+            if (!isNaN(hour) && hour >= 0 && hour < 24) {
+              stats.trafficOverTime[hour].count++;
+            } else {
+              console.warn('Invalid hour in timestamp:', timestamp, 'Hour:', hour);
+            }
+          } else {
+            console.warn('Invalid month in timestamp:', timestamp, 'Month:', monthStr);
           }
+        } else {
+          console.warn('Could not split datetime part into date and time:', dateTimePart);
         }
       }
-      // console.warn('Could not parse timestamp:', timestamp);
     } catch (error) {
       console.error('Error parsing timestamp:', timestamp, error);
     }
 
     if (attackType) {
-      // console.log('ATTACK COUNTING SECTION REACHED for:', attackType);
-      // console.log('Aggregator found attack:', attackType, 'for line:', {
-      //   ipAddress,
-      //   method,
-      //   path,
-      //   attackType
-      // });
+      console.log('ATTACK COUNTING SECTION REACHED for:', attackType);
+      console.log('Aggregator found attack:', attackType, 'for line:', {
+        ipAddress,
+        method,
+        path,
+        attackType
+      });
+      
+      // Log current values before incrementing
+      // console.log('Before incrementing - attackDistribution[attackType]:', stats.attackDistribution[attackType] || 0);
+      // console.log('Before incrementing - totalAttackAttempts:', stats.requestStats.totalAttackAttempts);
+      // console.log('Before incrementing - attackCounts[ipAddress]:', stats.ipStats.attackCounts[ipAddress] || 0);
       
       stats.attackDistribution[attackType]++;
       stats.requestStats.totalAttackAttempts++;
       stats.ipStats.attackCounts[ipAddress]++;
+      
+      // Log values after incrementing
+      // console.log('After incrementing - attackDistribution[attackType]:', stats.attackDistribution[attackType]);
+      // console.log('After incrementing - totalAttackAttempts:', stats.requestStats.totalAttackAttempts);
+      // console.log('After incrementing - attackCounts[ipAddress]:', stats.ipStats.attackCounts[ipAddress]);
       
       stats.recentAttacks.push({
         timestamp,
@@ -242,6 +269,9 @@ export const aggregateLogData = (parsedLines: any[], filters: Record<string, any
     }
   });
 
+  // console.log('Total valid lines processed:', validLinesCount);
+  // console.log('Final totalRequests:', stats.requestStats.totalRequests);
+  
   // Convert the traffic data to the expected format
   const processedTrafficData = stats.trafficOverTime.map((entry, index) => ({
     hour: index, // Use the array index as the hour
@@ -250,6 +280,9 @@ export const aggregateLogData = (parsedLines: any[], filters: Record<string, any
   
   //console.log('Processed traffic data:', processedTrafficData.filter(x => x.count > 0));
   
+  // console.log('Before return - Final attack distribution:', stats.attackDistribution);
+  // console.log('Before return - Total attack attempts:', stats.requestStats.totalAttackAttempts);
+
   return {
     requestStats: {
       ...stats.requestStats,

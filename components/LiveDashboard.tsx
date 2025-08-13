@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { aggregateLogData } from '../lib/log-aggregator';
 import { Dashboard } from './Dashboard';
+// import { LiveLogViewer } from './LiveLogViewer';
 import { Eye, EyeOff, XCircle } from 'lucide-react';
 
 // Create a worker for single line parsing
@@ -56,6 +57,7 @@ export function LiveDashboard({ wsUrl: initialWsUrl }: { wsUrl: string }) {
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'reconnecting'>('connecting');
   const [wsUrl, setWsUrl] = useState(initialWsUrl);
   const [newWsUrl, setNewWsUrl] = useState(initialWsUrl);
+  const [recentLogLines, setRecentLogLines] = useState<string[]>([]); // New state for recent log lines
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | undefined>();
   const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -78,6 +80,12 @@ export function LiveDashboard({ wsUrl: initialWsUrl }: { wsUrl: string }) {
 
   const handleNewLogLine = useCallback((line: string) => {
     // console.log('Received log line:', line);
+    
+    // Add to recent log lines for the viewer
+    setRecentLogLines(prev => {
+      const updated = [line, ...prev];
+      return updated.slice(0, 100); // Keep only the last 100 lines
+    });
     
     // Create a new worker for each line to avoid queueing issues
     const worker = createSingleLineParserWorker();
@@ -538,13 +546,7 @@ export function LiveDashboard({ wsUrl: initialWsUrl }: { wsUrl: string }) {
         </div>
       )}
       
-      {isConnected && !logData && parsedLines.length === 0 ? (
-        <div className="flex items-center justify-center h-64 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
-          <div className="text-center">
-            <p className="text-gray-500 dark:text-gray-400">Connected to WebSocket. Waiting for log data...</p>
-          </div>
-        </div>
-      ) : logData && parsedLines.length > 0 ? (
+      {logData && parsedLines.length > 0 ? (
         <Dashboard stats={logData} parsedLines={parsedLines} />
       ) : (
         <div className="flex items-center justify-center h-64 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
@@ -553,6 +555,11 @@ export function LiveDashboard({ wsUrl: initialWsUrl }: { wsUrl: string }) {
           </div>
         </div>
       )}
+      
+      {/* Live Log Viewer - Always show, even when no data */}
+      {/* <div className="mt-6">
+        <LiveLogViewer logLines={recentLogLines} />
+      </div> */}
     </div>
   );
 }
