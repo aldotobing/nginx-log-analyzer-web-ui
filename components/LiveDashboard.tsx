@@ -9,66 +9,61 @@ import { Eye, EyeOff, XCircle } from 'lucide-react';
 const parseLogLine = (line: string) => {
   try {
     // This regex handles cases where the request field might be empty ("") or malformed.
-    const match = line.match(/^(?<ip>[\d.]+) - - \[(?<timestamp>.+?)\] "(?<request>.*?)" (?<code>\d{3}) (?<size>\d+) "(?<referrer>.*?)" "(?<agent>.*?)"/);
-
+    // It also handles extra fields at the end (like the "-" at the end of some Nginx logs)
+    const match = line.match(/^(?<ip>[\d.]+) - (?<user>\S+) \[(?<timestamp>.+?)\] "(?<method>\S+) (?<path>[^"]*) HTTP\/\d+\.\d+" (?<code>\d+) (?<size>\d+) "(?<referrer>[^"]*)" "(?<agent>[^"]*)" "(?<xForwardedFor>[^"]*)"$/);
+    
     if (!match || !match.groups) {
       console.warn("Could not parse log line:", line);
       return null;
     }
 
-    const { ip, timestamp, request, code, size, referrer, agent } = match.groups;
+    const { ip, user, timestamp, method, path, code, size, referrer, agent, xForwardedFor } = match.groups;
     
     // Define valid HTTP methods
     const validHttpMethods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS', 'TRACE', 'CONNECT'];
     
     // Initialize method and url
-    let method = 'N/A';
+    let finalMethod = 'N/A';
     let url = 'N/A';
     
     // Only parse method and URL if request is not empty
-    if (request) {
-      // Split the request into parts
-      const requestParts = request.split(' ');
-      
-      // Check if the first part is a valid HTTP method
-      if (requestParts.length > 0 && validHttpMethods.includes(requestParts[0])) {
-        method = requestParts[0];
-        // URL is typically the second part if it exists
-        url = requestParts.length > 1 ? requestParts[1] : 'N/A';
-      } else if (requestParts.length > 0) {
-        const firstPart = requestParts[0];
-        
+    if (method && path) {
+      // Check if the method is a valid HTTP method
+      if (validHttpMethods.includes(method)) {
+        finalMethod = method;
+        url = path || 'N/A';
+      } else {
         // Check for known attack patterns or clearly malformed requests
-        const isAttackPattern = firstPart.includes('%') || 
-                               firstPart.includes(';') || 
-                               firstPart.includes('wget') || 
-                               firstPart.includes('curl') ||
-                               firstPart.length > 100;
+        const isAttackPattern = method.includes('%') || 
+                               method.includes(';') || 
+                               method.includes('wget') || 
+                               method.includes('curl') ||
+                               method.length > 100;
         
         // Check for clearly non-HTTP method patterns
-        const isNonHttpPattern = firstPart.includes('_DUPLEX_') || 
-                                firstPart.startsWith('SSTP_') ||
-                                firstPart.includes('Mozi') ||
-                                firstPart.includes('->');
+        const isNonHttpPattern = method.includes('_DUPLEX_') || 
+                                method.startsWith('SSTP_') ||
+                                method.includes('Mozi') ||
+                                method.includes('->');
         
         if (isAttackPattern || isNonHttpPattern) {
-          method = 'MALFORMED';
-        } else if (firstPart.length <= 25) {
+          finalMethod = 'MALFORMED';
+        } else if (method.length <= 25) {
           // Short, non-attack patterns are classified as OTHER
-          method = 'OTHER';
+          finalMethod = 'OTHER';
         } else {
           // Long patterns are classified as MALFORMED
-          method = 'MALFORMED';
+          finalMethod = 'MALFORMED';
         }
         
-        url = request; // Keep the full request for analysis
+        url = `${method} ${path}`; // Keep the full request for analysis
       }
     }
 
     return {
       ipAddress: ip,
       timestamp,
-      method,
+      method: finalMethod,
       path: url,
       status: code,
       bodyBytesSent: size,
