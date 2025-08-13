@@ -57,12 +57,19 @@ self.onmessage = (e) => {
   // Enhanced attack patterns with comprehensive security checks
   const attackPatterns = {
     "SQL Injection": new RegExp([
-      // More comprehensive SQLi patterns
-      "(?:%27|'|--|;|--\\s|/\\*.*?\\*/|#|%23)",  // Basic SQLi indicators
-      "\\b(?:UNION\\s+SELECT|SELECT\\s+.*?\\bFROM|INSERT\\s+INTO|DELETE\\s+FROM|UPDATE\\s+\\w+\\s+SET|DROP\\s+TABLE|CREATE\\s+TABLE|ALTER\\s+TABLE)\\b",
-      "\\b(?:OR|AND)\\s+['\\d]\\s*[=<>]",
-      "\\b(?:EXEC(?:UTE)?|EXEC\\s+SP_|XP_|sp_|xp_|WAITFOR\\s+DELAY)",
-      "\\b(?:CHAR\\(|CONCAT\\()"
+      // Basic SQLi indicators
+      "(?:%27|'|--|;|--\\s|/\\*.*?\\*/|#|%23|%2527)",
+      // SQL commands and patterns
+      "\\b(?:UNION\\s+(?:ALL\\s+)?SELECT|SELECT\\s+.*?\\bFROM|INSERT\\s+INTO|DELETE\\s+FROM|UPDATE\\s+\\w+\\s+SET|DROP\\s+(?:TABLE|DATABASE)|CREATE\\s+(?:TABLE|DATABASE)|ALTER\\s+TABLE)\\b",
+      // Logical operators and comparisons
+      "\\b(?:OR|AND|X?OR|NOT|LIKE|RLIKE|REGEXP)\\s+['\\d]\\s*[=<>~!]?=",
+      // Database functions and procedures
+      "\\b(?:EXEC(?:UTE)?(?:\\(|\\s)|EXEC\\s+SP_|XP_|sp_|xp_|WAITFOR\\s+DELAY|SLEEP\\s*\\(|BENCHMARK\\s*\\(|PG_SLEEP\\s*\\(|UPDATEXML\\s*\\(|EXTRACTVALUE\\s*\\()",
+      // String operations
+      "\\b(?:CHAR\\(|CONCAT\\(|GROUP_CONCAT\\()",
+      // Common SQLi in parameters
+      "[?&][^=]+=(?:%27|'|%2527).*?(?:OR|AND|X?OR|NOT).*?=",
+      "[?&][^=]+=.*?(?:--|#|%23|;)"
     ].join('|'), 'i'),
 
     "XSS": new RegExp([
@@ -93,15 +100,19 @@ self.onmessage = (e) => {
 
     "Directory Traversal": new RegExp(
       // Match directory traversal sequences with at least two levels up
-      '(?:^|/)(?:\\.{2}/){2,}' +
-      '|(?:^|\\\\)(?:\\.{2}\\\\){2,}' +  // Escaped backslashes for Windows paths
+      '(?:^|/|\\\\)(?:\\.{1,2}[\./\\]){2,}' +
       // Match encoded traversal sequences
-      '|(?:^|/)(?:%2e%2e[/\\\\]){2,}' +
+      '|(?:^|/|\\)(?:%2e%2e|%252e%252e|%c0%ae%c0%ae|%u002e%u002e)[/\\\\]' +
       // Match absolute paths to sensitive files
-      '|/etc/(?:passwd|shadow|group)(?:/|$|\\0)' +
-      '|/proc/self/environ(?:/|$|\\0)' +
+      '|/(?:etc/(?:passwd|shadow|group|hosts)|proc/self/environ|windows/win\.ini|boot\.ini|php\.ini|my\.cnf)(?:/|$|\\0)' +
       // Match Windows-style absolute paths
-      '|^[a-zA-Z]:\\\\[^\\/]+',
+      '|^[a-zA-Z]:\\\\[^\\/]+' +
+      // Match common path traversal patterns
+      '|\\.\\.(?:%2f|%252f|%5c|%255c)' +
+      // Match null byte injection
+      '|\\x00|%00|\\0' +
+      // Match double encoding
+      '|%25(?:2e|25|5c|2f|5f|3d|3f|26|3a|3b)',
       'i'
     ),
 
@@ -145,12 +156,18 @@ self.onmessage = (e) => {
         );
         if (!match) return null;
 
+        // Split path and query parameters
+        const fullPath = match[5];
+        const [path, query] = fullPath.split('?');
+
         return {
           ipAddress: match[1],
           remoteUser: match[2],
           timestamp: match[3],
           method: match[4],
-          path: match[5],
+          path: path,
+          query: query || '',
+          fullPath: fullPath,
           status: match[6],
           bodyBytesSent: match[7],
           referer: match[8],
@@ -164,12 +181,18 @@ self.onmessage = (e) => {
         );
         if (!match) return null;
 
+        // Split path and query parameters for Apache
+        const fullPath = match[5];
+        const [path, query] = fullPath.split('?');
+
         return {
           ipAddress: match[1],
           remoteUser: match[2],
           timestamp: match[3],
           method: match[4],
-          path: match[5],
+          path: path,
+          query: query || '',
+          fullPath: fullPath,
           status: match[6],
           bodyBytesSent: match[7] === "-" ? "0" : match[7],
           referer: "-",
@@ -259,20 +282,50 @@ self.onmessage = (e) => {
     }
 
     let attackType = null;
+    // Use the full path with query parameters for attack detection
+    const fullPath = parsedLine.fullPath || path;
+    
+    // Check for attacks in both path and query parameters
     for (const [type, pattern] of Object.entries(attackPatterns)) {
-      if (pattern.test(path)) {
+      if (pattern.test(fullPath)) {
+        console.log(`[ATTACK DETECTED] Type: ${type}, Path: ${fullPath}`);
+        
+        // Initialize attack type counter if it doesn't exist
+        if (!stats.attackDistribution[type]) {
+          stats.attackDistribution[type] = 0;
+        }
+        
         stats.attackDistribution[type]++;
         stats.requestStats.totalAttackAttempts++;
-        stats.ipStats.attackCounts[ipAddress]++;
+        stats.ipStats.attackCounts[ipAddress] = (stats.ipStats.attackCounts[ipAddress] || 0) + 1;
         attackType = type;
-        stats.recentAttacks.push({
-          timestamp,
-          ipAddress,
-          remoteUser,
-          attackType: type,
-          requestPath: path,
-        });
-        break;
+        
+        // Add to recent attacks if not already there (to avoid duplicates)
+        const attackKey = `${ipAddress}:${type}:${path}`;
+        const attackExists = stats.recentAttacks.some(attack => 
+          `${attack.ipAddress}:${attack.attackType}:${attack.requestPath}` === attackKey
+        );
+        
+        if (!attackExists) {
+          stats.recentAttacks.push({
+            timestamp,
+            ipAddress,
+            remoteUser,
+            attackType: type,
+            requestPath: path,
+            fullPath: fullPath, // Store full path for reference
+            method: method     // Include HTTP method
+          });
+          
+          // Keep only the 100 most recent attacks
+          if (stats.recentAttacks.length > 100) {
+            stats.recentAttacks.shift();
+          }
+          
+          console.log(`[NEW ATTACK] ${type} from ${ipAddress} at ${timestamp}: ${method} ${fullPath}`);
+        }
+        
+        // Don't break here to check for multiple attack types
       }
     }
 
