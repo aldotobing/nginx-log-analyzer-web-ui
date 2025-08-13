@@ -61,8 +61,8 @@ self.onmessage = (e) => {
       "(?:%27|'|--|;|--\\s|/\\*.*?\\*/|#|%23|%2527)",
       // SQL commands and patterns
       "\\b(?:UNION\\s+(?:ALL\\s+)?SELECT|SELECT\\s+.*?\\bFROM|INSERT\\s+INTO|DELETE\\s+FROM|UPDATE\\s+\\w+\\s+SET|DROP\\s+(?:TABLE|DATABASE)|CREATE\\s+(?:TABLE|DATABASE)|ALTER\\s+TABLE)\\b",
-      // Logical operators and comparisons
-      "\\b(?:OR|AND|X?OR|NOT|LIKE|RLIKE|REGEXP)\\s+['\\d]\\s*[=<>~!]?=",
+      // Logical operators and comparisons (both in query params and general)
+      "(?:[?&][^=]*=(?:%27|'|%2527).*?(?:OR|AND|X?OR|NOT).*?=|\\b(?:OR|AND|X?OR|NOT)\\s+['\\d]\\s*[=<>~!]?=)",
       // Database functions and procedures
       "\\b(?:EXEC(?:UTE)?(?:\\(|\\s)|EXEC\\s+SP_|XP_|sp_|xp_|WAITFOR\\s+DELAY|SLEEP\\s*\\(|BENCHMARK\\s*\\(|PG_SLEEP\\s*\\(|UPDATEXML\\s*\\(|EXTRACTVALUE\\s*\\()",
       // String operations
@@ -88,7 +88,7 @@ self.onmessage = (e) => {
     "Command Injection": new RegExp([
       // More comprehensive command injection patterns
       "\\b(?:cat|ls|uname|whoami|pwd|rm|touch|wget|curl|scp|rsync|ftp|nc|ncat|nmap|ping|traceroute|telnet|ssh|bash|sh|zsh|dash|powershell|cmd\\.exe|cmd\\/c|\\|\\||&&|;)\\b",
-      "\\$\s*\\(.*\\)",              // $(command)
+      "\\$\\s*\\(.*\\)",              // $(command)
       "`.*`",                         // `command`
       "\\|\\|\\s*\\w+",               // || command
       "&&\\s*\\w+",                   // && command
@@ -98,23 +98,22 @@ self.onmessage = (e) => {
       "\\b(?:exec|system|passthru|shell_exec|popen|proc_open|pcntl_exec)\\s*\\("
     ].join('|'), 'i'),
 
-    "Directory Traversal": new RegExp(
+    "Directory Traversal": new RegExp([
       // Match directory traversal sequences with at least two levels up
-      '(?:^|/|\\\\)(?:\\.{1,2}[\./\\]){2,}' +
+      "(?:^|/|\\\\)(?:\\.{1,2}[\\./\\\\]){2,}",
       // Match encoded traversal sequences
-      '|(?:^|/|\\)(?:%2e%2e|%252e%252e|%c0%ae%c0%ae|%u002e%u002e)[/\\\\]' +
+      "(?:^|/|\\\\)(?:%2e%2e|%252e%252e|%c0%ae%c0%ae|%u002e%u002e)[/\\\\]",
       // Match absolute paths to sensitive files
-      '|/(?:etc/(?:passwd|shadow|group|hosts)|proc/self/environ|windows/win\.ini|boot\.ini|php\.ini|my\.cnf)(?:/|$|\\0)' +
+      "/(?:etc/(?:passwd|shadow|group|hosts)|proc/self/environ|windows/win\\.ini|boot\\.ini|php\\.ini|my\\.cnf)(?:/|$|\\x00)",
       // Match Windows-style absolute paths
-      '|^[a-zA-Z]:\\\\[^\\/]+' +
+      "^[a-zA-Z]:\\\\[^/]+",
       // Match common path traversal patterns
-      '|\\.\\.(?:%2f|%252f|%5c|%255c)' +
+      "\\.\\.\\.(?:%2f|%252f|%5c|%255c)",
       // Match null byte injection
-      '|\\x00|%00|\\0' +
+      "\\\\x00|%00|\\\\0",
       // Match double encoding
-      '|%25(?:2e|25|5c|2f|5f|3d|3f|26|3a|3b)',
-      'i'
-    ),
+      "%25(?:2e|25|5c|2f|5f|3d|3f|26|3a|3b)"
+    ].join('|'), 'i'),
 
     "Brute Force": new RegExp([
       // More specific brute force patterns - focusing on common attack paths

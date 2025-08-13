@@ -20,6 +20,8 @@ interface SuspiciousIpInfo {
 }
 
 export const aggregateLogData = (parsedLines: any[], filters: Record<string, any> = {}) => {
+  // console.log('Aggregating log data, parsedLines:', parsedLines.length);
+  
   const stats = {
     requestStats: {
       totalRequests: 0,
@@ -67,6 +69,8 @@ export const aggregateLogData = (parsedLines: any[], filters: Record<string, any
   //console.log('=== Starting to process', parsedLines.length, 'log entries with filters:', filters);
   
   parsedLines.forEach((parsedLine, index) => {
+    // console.log(`Processing line ${index}:`, parsedLine);
+    
     // Apply filters if any
     let filterMatch = true;
     
@@ -115,7 +119,11 @@ export const aggregateLogData = (parsedLines: any[], filters: Record<string, any
       }
     }
 
-    if (!filterMatch) return;
+    if (!filterMatch) {
+        // console.log(`Line ${index} filtered out`);
+      return;
+    }
+    
     const {
       ipAddress,
       remoteUser,
@@ -129,7 +137,18 @@ export const aggregateLogData = (parsedLines: any[], filters: Record<string, any
       attackType,
     } = parsedLine;
 
-    if (!ipAddress || !method || !status) return;
+    // console.log(`Line ${index} details:`, {
+    //   ipAddress,
+    //   method,
+    //   path,
+    //   status,
+    //   attackType
+    // });
+
+    if (!ipAddress || !method || !status) {
+      // console.log(`Line ${index} missing required fields, skipping`);
+      return;
+    }
 
     initIpStats(ipAddress);
     const bytes = parseInt(bodyBytesSent, 10) || 0;
@@ -184,19 +203,28 @@ export const aggregateLogData = (parsedLines: any[], filters: Record<string, any
           const hour = parseInt(hourStr, 10);
           if (!isNaN(hour) && hour >= 0 && hour < 24) {
             stats.trafficOverTime[hour].count++;
-            return; // Successfully processed
+            // Removed the return statement that was preventing attack counting
           }
         }
       }
-      console.warn('Could not parse timestamp:', timestamp);
+      // console.warn('Could not parse timestamp:', timestamp);
     } catch (error) {
       console.error('Error parsing timestamp:', timestamp, error);
     }
 
     if (attackType) {
+      // console.log('ATTACK COUNTING SECTION REACHED for:', attackType);
+      console.log('Aggregator found attack:', attackType, 'for line:', {
+        ipAddress,
+        method,
+        path,
+        attackType
+      });
+      
       stats.attackDistribution[attackType]++;
       stats.requestStats.totalAttackAttempts++;
       stats.ipStats.attackCounts[ipAddress]++;
+      
       stats.recentAttacks.push({
         timestamp,
         ipAddress,
@@ -204,6 +232,13 @@ export const aggregateLogData = (parsedLines: any[], filters: Record<string, any
         attackType: attackType,
         requestPath: path,
       });
+    } else {
+      // console.log('No attack type found for line:', {
+      //   ipAddress,
+      //   method,
+      //   path,
+      //   attackType
+      // });
     }
   });
 
@@ -214,7 +249,7 @@ export const aggregateLogData = (parsedLines: any[], filters: Record<string, any
   }));
   
   //console.log('Processed traffic data:', processedTrafficData.filter(x => x.count > 0));
-
+  
   return {
     requestStats: {
       ...stats.requestStats,

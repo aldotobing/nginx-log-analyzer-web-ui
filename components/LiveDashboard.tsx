@@ -5,75 +5,9 @@ import { aggregateLogData } from '../lib/log-aggregator';
 import { Dashboard } from './Dashboard';
 import { Eye, EyeOff, XCircle } from 'lucide-react';
 
-// A more robust parser for common Nginx log formats.
-const parseLogLine = (line: string) => {
-  try {
-    // This regex handles cases where the request field might be empty ("") or malformed.
-    // It also handles extra fields at the end (like the "-" at the end of some Nginx logs)
-    const match = line.match(/^(?<ip>[\d.]+) - (?<user>\S+) \[(?<timestamp>.+?)\] "(?<method>\S+) (?<path>[^"]*) HTTP\/\d+\.\d+" (?<code>\d+) (?<size>\d+) "(?<referrer>[^"]*)" "(?<agent>[^"]*)" "(?<xForwardedFor>[^"]*)"$/);
-    
-    if (!match || !match.groups) {
-      console.warn("Could not parse log line:", line);
-      return null;
-    }
-
-    const { ip, user, timestamp, method, path, code, size, referrer, agent, xForwardedFor } = match.groups;
-    
-    // Define valid HTTP methods
-    const validHttpMethods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS', 'TRACE', 'CONNECT'];
-    
-    // Initialize method and url
-    let finalMethod = 'N/A';
-    let url = 'N/A';
-    
-    // Only parse method and URL if request is not empty
-    if (method && path) {
-      // Check if the method is a valid HTTP method
-      if (validHttpMethods.includes(method)) {
-        finalMethod = method;
-        url = path || 'N/A';
-      } else {
-        // Check for known attack patterns or clearly malformed requests
-        const isAttackPattern = method.includes('%') || 
-                               method.includes(';') || 
-                               method.includes('wget') || 
-                               method.includes('curl') ||
-                               method.length > 100;
-        
-        // Check for clearly non-HTTP method patterns
-        const isNonHttpPattern = method.includes('_DUPLEX_') || 
-                                method.startsWith('SSTP_') ||
-                                method.includes('Mozi') ||
-                                method.includes('->');
-        
-        if (isAttackPattern || isNonHttpPattern) {
-          finalMethod = 'MALFORMED';
-        } else if (method.length <= 25) {
-          // Short, non-attack patterns are classified as OTHER
-          finalMethod = 'OTHER';
-        } else {
-          // Long patterns are classified as MALFORMED
-          finalMethod = 'MALFORMED';
-        }
-        
-        url = `${method} ${path}`; // Keep the full request for analysis
-      }
-    }
-
-    return {
-      ipAddress: ip,
-      timestamp,
-      method: finalMethod,
-      path: url,
-      status: code,
-      bodyBytesSent: size,
-      referer: referrer,
-      userAgent: agent,
-    };
-  } catch (error) {
-    console.error('Error parsing log line:', error);
-    return null;
-  }
+// Create a worker for single line parsing
+const createSingleLineParserWorker = () => {
+  return new Worker(new URL('../workers/singleLineParser.js', import.meta.url));
 };
 
 export interface LogData {
@@ -128,6 +62,7 @@ export function LiveDashboard({ wsUrl: initialWsUrl }: { wsUrl: string }) {
   const pongTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastMessageTime = useRef<number>(Date.now());
   const reconnectDelay = useRef(BASE_RECONNECT_DELAY);
+  const logParserWorkerRef = useRef<Worker | null>(null);
 
   // Update wsUrl and newWsUrl when initialWsUrl changes
   useEffect(() => {
@@ -139,17 +74,44 @@ export function LiveDashboard({ wsUrl: initialWsUrl }: { wsUrl: string }) {
     return Math.min(BASE_RECONNECT_DELAY * Math.pow(2, attempt), MAX_RECONNECT_DELAY);
   };
 
+  
+
   const handleNewLogLine = useCallback((line: string) => {
-    const parsedLog = parseLogLine(line);
-    if (parsedLog) {
-      setParsedLines(prevLines => {
-        // Keep all logs, just prepend the new one
-        const updatedLines = [parsedLog, ...prevLines];
-        const aggregatedData = aggregateLogData(updatedLines);
-        setLogData(aggregatedData);
-        return updatedLines;
-      });
-    }
+    // console.log('Received log line:', line);
+    
+    // Create a new worker for each line to avoid queueing issues
+    const worker = createSingleLineParserWorker();
+    
+    worker.onmessage = (event) => {
+      if (event.data.error) {
+        console.error('Error parsing log line:', event.data.error);
+      } else if (event.data.parsedLine) {
+        const parsedLine = event.data.parsedLine;
+        // console.log('Parsed line:', parsedLine);
+        
+        if (parsedLine.attackType) {
+          // console.log('ATTACK DETECTED:', parsedLine.attackType, 'in line:', line);
+        }
+        
+        setParsedLines(prevLines => {
+          const updatedLines = [parsedLine, ...prevLines];
+          setLogData(aggregateLogData(updatedLines));
+          return updatedLines;
+        });
+      }
+      worker.terminate();
+    };
+    
+    worker.onerror = (error) => {
+      console.error('Worker error:', error);
+      worker.terminate();
+    };
+    
+    // Send the log line to the worker for parsing
+    worker.postMessage({
+      line: line,
+      format: 'nginx' // or make this configurable
+    });
   }, []);
 
   const setupPingPong = useCallback(() => {
@@ -214,7 +176,7 @@ export function LiveDashboard({ wsUrl: initialWsUrl }: { wsUrl: string }) {
       wsRef.current = ws;
 
       ws.onopen = () => {
-        console.log('WebSocket connected');
+        // console.log('WebSocket connected to:', url);
         // Check if component is still mounted before updating state
         if (!wsRef.current) return;
         setIsConnected(true);
@@ -234,6 +196,7 @@ export function LiveDashboard({ wsUrl: initialWsUrl }: { wsUrl: string }) {
         
         if (typeof event.data === 'string') {
           lastMessageTime.current = Date.now();
+          // console.log('WebSocket message received:', event.data);
           
           try {
             const data = JSON.parse(event.data);
@@ -242,17 +205,19 @@ export function LiveDashboard({ wsUrl: initialWsUrl }: { wsUrl: string }) {
                 clearTimeout(pongTimeoutRef.current);
                 pongTimeoutRef.current = null;
               }
+              // console.log('Pong received');
               return;
             }
           } catch (e) {
             // Not a JSON message, treat as log line
+            // console.log('Treating message as log line');
             handleNewLogLine(event.data);
           }
         }
       };
 
       ws.onclose = (event) => {
-        console.log('WebSocket closed:', event.code, event.reason);
+        // console.log('WebSocket closed:', event.code, event.reason);
         // Don't update state if component is unmounting
         if (!wsRef.current) return;
         
@@ -271,7 +236,7 @@ export function LiveDashboard({ wsUrl: initialWsUrl }: { wsUrl: string }) {
         
         // Special handling for our forced reconnection
         if (event.code === 4001) { // Our custom code for visibility change
-          console.log('Reconnecting after visibility change...');
+            // console.log('Reconnecting after visibility change...');
           connectWebSocket();
           return;
         }
@@ -285,7 +250,7 @@ export function LiveDashboard({ wsUrl: initialWsUrl }: { wsUrl: string }) {
             reconnectDelay.current = calculateReconnectDelay(nextAttempt);
             
             reconnectTimeoutRef.current = setTimeout(() => {
-              console.log(`Attempting to reconnect (${nextAttempt + 1}/${MAX_RECONNECT_ATTEMPTS})...`);
+              // console.log(`Attempting to reconnect (${nextAttempt + 1}/${MAX_RECONNECT_ATTEMPTS})...`);
               connectWebSocket();
             }, reconnectDelay.current);
             
@@ -573,7 +538,13 @@ export function LiveDashboard({ wsUrl: initialWsUrl }: { wsUrl: string }) {
         </div>
       )}
       
-      {logData && parsedLines.length > 0 ? (
+      {isConnected && !logData && parsedLines.length === 0 ? (
+        <div className="flex items-center justify-center h-64 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
+          <div className="text-center">
+            <p className="text-gray-500 dark:text-gray-400">Connected to WebSocket. Waiting for log data...</p>
+          </div>
+        </div>
+      ) : logData && parsedLines.length > 0 ? (
         <Dashboard stats={logData} parsedLines={parsedLines} />
       ) : (
         <div className="flex items-center justify-center h-64 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
