@@ -58,6 +58,25 @@ export function HttpMethodsChart({ data, className = "", onFilter, activeFilter,
   const [isModalOpen, setIsModalOpen] = useState(false);
   const chartRef = useRef<ChartJS<"doughnut">>(null);
 
+  // Function to format Nginx timestamp
+  const formatNginxTimestamp = (timestamp: string) => {
+    try {
+      // Nginx timestamp format: 11/Aug/2025:03:30:00 +0700
+      // Parse the timestamp properly
+      const match = timestamp.match(/(\d{2})\/(\w{3})\/(\d{4}):(\d{2}):(\d{2}):(\d{2})/);
+      if (match) {
+        const [, day, month, year, hour, minute] = match;
+        // Return an even shorter format: "08/11 03:30"
+        return `${month}/${day} ${hour}:${minute}`;
+      }
+      // If parsing fails, return the original timestamp
+      return timestamp;
+    } catch (error) {
+      // If any error occurs, return the original timestamp
+      return timestamp;
+    }
+  };
+
   useEffect(() => {
     const darkMode = document.documentElement.classList.contains("dark");
     setIsDarkMode(darkMode);
@@ -324,11 +343,22 @@ export function HttpMethodsChart({ data, className = "", onFilter, activeFilter,
             >
               <div className="flex justify-between items-center p-5 border-b border-gray-200/50 dark:border-gray-700/50">
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                    {selectedMethod} Requests
-                  </h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {methodLogs.length} logs found
+                  <div className="flex items-center gap-3">
+                    <span 
+                      className="px-3 py-1.5 rounded-lg text-sm font-semibold"
+                      style={{ 
+                        backgroundColor: `${HTTP_METHOD_COLORS[selectedMethod as keyof typeof HTTP_METHOD_COLORS]?.base}20` || 'rgba(99, 102, 241, 0.2)',
+                        color: HTTP_METHOD_COLORS[selectedMethod as keyof typeof HTTP_METHOD_COLORS]?.base || '#6366f1'
+                      }}
+                    >
+                      {selectedMethod}
+                    </span>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                      Request Details
+                    </h3>
+                  </div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    Showing {methodLogs.length} logs
                   </p>
                 </div>
                 <button 
@@ -345,56 +375,109 @@ export function HttpMethodsChart({ data, className = "", onFilter, activeFilter,
                     {methodLogs.slice(0, 50).map((log, index) => (
                       <div 
                         key={index} 
-                        className="bg-white dark:bg-gray-700/30 p-4 rounded-xl border border-gray-200/50 dark:border-gray-600/30 shadow-sm hover:shadow-md transition-shadow duration-200"
+                        className="bg-white dark:bg-gray-700/30 p-4 rounded-xl border border-gray-200/50 dark:border-gray-600/30 shadow-sm hover:shadow-md transition-all duration-200"
                       >
                         <div className="flex items-start gap-3">
                           <span 
-                            className="px-2.5 py-1 rounded-lg text-xs font-semibold flex-shrink-0 mt-1"
+                            className="px-2.5 py-1 rounded-lg text-xs font-semibold flex-shrink-0 mt-1 flex items-center gap-1"
                             style={{ 
                               backgroundColor: `${HTTP_METHOD_COLORS[selectedMethod as keyof typeof HTTP_METHOD_COLORS]?.base}20` || 'rgba(99, 102, 241, 0.2)',
                               color: HTTP_METHOD_COLORS[selectedMethod as keyof typeof HTTP_METHOD_COLORS]?.base || '#6366f1'
                             }}
                           >
+                            <ArrowRightLeft className="w-3 h-3" />
                             {log.method}
                           </span>
                           <div className="flex-1 min-w-0">
-                            <div className="text-gray-800 dark:text-gray-200 text-sm break-all mb-2">
+                            <div className="text-gray-800 dark:text-gray-200 text-sm font-medium break-all mb-2">
                               {log.path}
                             </div>
-                            <div className="flex flex-wrap gap-3 text-xs">
-                              <span className="text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700/50 px-2 py-1 rounded">
-                                Status: {log.status}
-                              </span>
-                              <span className="text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700/50 px-2 py-1 rounded">
-                                Size: {log.bodyBytesSent}
-                              </span>
-                              <span className="text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700/50 px-2 py-1 rounded">
-                                IP: {log.ipAddress}
-                              </span>
-                              <span className="text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700/50 px-2 py-1 rounded">
-                                {log.timestamp}
-                              </span>
+                            
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-700/50 p-2 rounded-lg">
+                                <div className="bg-green-100 dark:bg-green-900/30 p-1 rounded-lg">
+                                  <Zap className="w-3 h-3 text-green-600 dark:text-green-400" />
+                                </div>
+                                <div>
+                                  <div className="text-xs text-gray-500 dark:text-gray-400">Status</div>
+                                  <div className="text-xs font-medium text-gray-800 dark:text-gray-200">{log.status}</div>
+                                </div>
+                              </div>
+                              
+                              <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-700/50 p-2 rounded-lg">
+                                <div className="bg-blue-100 dark:bg-blue-900/30 p-1 rounded-lg">
+                                  <Server className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                                </div>
+                                <div>
+                                  <div className="text-xs text-gray-500 dark:text-gray-400">Size</div>
+                                  <div className="text-xs font-medium text-gray-800 dark:text-gray-200">{log.bodyBytesSent} bytes</div>
+                                </div>
+                              </div>
+                              
+                              <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-700/50 p-2 rounded-lg">
+                                <div className="bg-purple-100 dark:bg-purple-900/30 p-1 rounded-lg">
+                                  <AlertTriangle className="w-3 h-3 text-purple-600 dark:text-purple-400" />
+                                </div>
+                                <div>
+                                  <div className="text-xs text-gray-500 dark:text-gray-400">IP</div>
+                                  <div className="text-xs font-medium text-gray-800 dark:text-gray-200 font-mono">{log.ipAddress}</div>
+                                </div>
+                              </div>
+                              
+                              <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-700/50 p-2 rounded-lg">
+                                <div className="bg-amber-100 dark:bg-amber-900/30 p-1 rounded-lg">
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                  </svg>
+                                </div>
+                                <div>
+                                  <div className="text-xs text-gray-500 dark:text-gray-400">Time</div>
+                                  <div className="text-xs font-medium text-gray-800 dark:text-gray-200">{formatNginxTimestamp(log.timestamp)}</div>
+                                </div>
+                              </div>
                             </div>
+                            
+                            {log.userAgent && (
+                              <div className="mt-3 pt-3 border-t border-gray-200/50 dark:border-gray-600/30">
+                                <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">User Agent</div>
+                                <div className="text-sm text-gray-700 dark:text-gray-300 break-all bg-gray-50 dark:bg-gray-700/30 p-2 rounded">
+                                  {log.userAgent}
+                                </div>
+                              </div>
+                            )}
+                            
+                            {log.referer && log.referer !== '-' && (
+                              <div className="mt-2">
+                                <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Referrer</div>
+                                <div className="text-sm text-gray-700 dark:text-gray-300 break-all bg-gray-50 dark:bg-gray-700/30 p-2 rounded">
+                                  {log.referer}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
                     ))}
                     {methodLogs.length > 50 && (
-                      <div className="text-center py-3 bg-gray-100/50 dark:bg-gray-700/30 rounded-lg">
-                        <p className="text-gray-600 dark:text-gray-300 text-sm">
-                          Showing first 50 of {methodLogs.length} logs
-                        </p>
+                      <div className="text-center py-4 bg-gray-100/50 dark:bg-gray-700/30 rounded-lg mt-2">
+                        <div className="inline-flex items-center gap-2 text-gray-600 dark:text-gray-300 text-sm">
+                          <AlertTriangle className="w-4 h-4" />
+                          <span>Showing first 50 of {methodLogs.length} logs</span>
+                        </div>
                       </div>
                     )}
                   </div>
                 ) : (
                   <div className="text-center py-16">
-                    <Server className="h-16 w-16 mx-auto text-gray-300 dark:text-gray-600 mb-4" />
-                    <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                      No logs found
+                    <div className="mx-auto w-24 h-24 bg-gray-100 dark:bg-gray-700/50 rounded-full flex items-center justify-center mb-6">
+                      <Server className="h-12 w-12 text-gray-400 dark:text-gray-500" />
+                    </div>
+                    <h4 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                      No Request Logs Found
                     </h4>
                     <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto">
-                      No logs were found for the {selectedMethod} method. This might indicate that no requests of this type were made during the monitoring period.
+                      No logs were found for the <span className="font-semibold text-gray-900 dark:text-white">{selectedMethod}</span> method. 
+                      This might indicate that no requests of this type were made during the monitoring period.
                     </p>
                   </div>
                 )}

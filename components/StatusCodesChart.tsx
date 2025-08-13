@@ -13,7 +13,7 @@ import {
   ChartEvent,
   ActiveElement,
 } from "chart.js";
-import { ListChecks, CheckCircle, AlertCircle, ServerCrash, BarChart3, X } from "lucide-react";
+import { ListChecks, CheckCircle, AlertCircle, ServerCrash, BarChart3, X, Zap, Server, AlertTriangle, ArrowRightLeft } from "lucide-react";
 
 ChartJS.register(
   CategoryScale,
@@ -45,6 +45,25 @@ export function StatusCodesChart({ data, className = "", onFilter, activeFilter,
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [statusLogs, setStatusLogs] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Function to format Nginx timestamp
+  const formatNginxTimestamp = (timestamp: string) => {
+    try {
+      // Nginx timestamp format: 11/Aug/2025:03:30:00 +0700
+      // Parse the timestamp properly
+      const match = timestamp.match(/(\d{2})\/(\w{3})\/(\d{4}):(\d{2}):(\d{2}):(\d{2})/);
+      if (match) {
+        const [, day, month, year, hour, minute] = match;
+        // Return an even shorter format: "08/11 03:30"
+        return `${month}/${day} ${hour}:${minute}`;
+      }
+      // If parsing fails, return the original timestamp
+      return timestamp;
+    } catch (error) {
+      // If any error occurs, return the original timestamp
+      return timestamp;
+    }
+  };
 
   useEffect(() => {
     const darkMode = document.documentElement.classList.contains("dark");
@@ -316,18 +335,29 @@ export function StatusCodesChart({ data, className = "", onFilter, activeFilter,
             >
               <div className="flex justify-between items-center p-5 border-b border-gray-200/50 dark:border-gray-700/50">
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                    {selectedStatus} Status Codes
-                  </h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {statusLogs.length} requests found
+                  <div className="flex items-center gap-3">
+                    <div className={`px-3 py-1.5 rounded-lg text-sm font-semibold flex items-center gap-2 ${
+                      selectedStatus?.startsWith('2') ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200' :
+                      selectedStatus?.startsWith('4') ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200' :
+                      selectedStatus?.startsWith('5') ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200' :
+                      'bg-gray-100 dark:bg-gray-700/50 text-gray-800 dark:text-gray-200'
+                    }`}>
+                      <Zap className="w-4 h-4" />
+                      {selectedStatus}
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                      Status Code Details
+                    </h3>
+                  </div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    Showing {statusLogs.length} requests
                   </p>
                 </div>
                 <button
                   onClick={closeModal}
-                  className="p-1 rounded-full hover:bg-gray-200/50 dark:hover:bg-gray-700/50 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+                  className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700/50 transition-colors duration-200"
                 >
-                  <X className="h-5 w-5" />
+                  <X className="h-5 w-5 text-gray-500 dark:text-gray-400" />
                 </button>
               </div>
               
@@ -337,59 +367,108 @@ export function StatusCodesChart({ data, className = "", onFilter, activeFilter,
                     {statusLogs.slice(0, 50).map((log, index) => (
                       <div 
                         key={index}
-                        className="bg-white/50 dark:bg-gray-800/50 p-4 rounded-lg border border-gray-200/50 dark:border-gray-700/50"
+                        className="bg-white dark:bg-gray-700/30 p-4 rounded-xl border border-gray-200/50 dark:border-gray-600/30 shadow-sm hover:shadow-md transition-all duration-200"
                       >
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <div className="font-mono text-sm text-gray-900 dark:text-gray-100">
-                              {log.method} {log.path} {log.protocol}
-                            </div>
-                            <div className="mt-1 flex items-center space-x-4 text-xs text-gray-500 dark:text-gray-400">
-                              <span>Status: {log.status}</span>
-                              <span>Size: {log.size}</span>
-                              <span>IP: {log.ip}</span>
-                            </div>
+                        <div className="flex items-start gap-3">
+                          <div className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex-shrink-0 mt-1 flex items-center gap-1 ${
+                            log.status.startsWith('2') ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200' :
+                            log.status.startsWith('4') ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200' :
+                            log.status.startsWith('5') ? 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200' :
+                            'bg-gray-100 dark:bg-gray-700/50 text-gray-800 dark:text-gray-200'
+                          }`}>
+                            <Zap className="w-3 h-3" />
+                            {log.status}
                           </div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400">
-                            {new Date(log.timestamp).toLocaleString()}
+                          <div className="flex-1 min-w-0">
+                            <div className="text-gray-800 dark:text-gray-200 text-sm font-medium break-all mb-2">
+                              {log.method} {log.path}
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-700/50 p-2 rounded-lg">
+                                <div className="bg-blue-100 dark:bg-blue-900/30 p-1 rounded-lg">
+                                  <Server className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                                </div>
+                                <div>
+                                  <div className="text-xs text-gray-500 dark:text-gray-400">Size</div>
+                                  <div className="text-xs font-medium text-gray-800 dark:text-gray-200">{log.bodyBytesSent} bytes</div>
+                                </div>
+                              </div>
+                              
+                              <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-700/50 p-2 rounded-lg">
+                                <div className="bg-purple-100 dark:bg-purple-900/30 p-1 rounded-lg">
+                                  <AlertTriangle className="w-3 h-3 text-purple-600 dark:text-purple-400" />
+                                </div>
+                                <div>
+                                  <div className="text-xs text-gray-500 dark:text-gray-400">IP</div>
+                                  <div className="text-xs font-medium text-gray-800 dark:text-gray-200 font-mono">{log.ipAddress}</div>
+                                </div>
+                              </div>
+                              
+                              <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-700/50 p-2 rounded-lg">
+                                <div className="bg-amber-100 dark:bg-amber-900/30 p-1 rounded-lg">
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                  </svg>
+                                </div>
+                                <div>
+                                  <div className="text-xs text-gray-500 dark:text-gray-400">Time</div>
+                                  <div className="text-xs font-medium text-gray-800 dark:text-gray-200">{formatNginxTimestamp(log.timestamp)}</div>
+                                </div>
+                              </div>
+                              
+                              <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-700/50 p-2 rounded-lg">
+                                <div className="bg-cyan-100 dark:bg-cyan-900/30 p-1 rounded-lg">
+                                  <ArrowRightLeft className="w-3 h-3 text-cyan-600 dark:text-cyan-400" />
+                                </div>
+                                <div>
+                                  <div className="text-xs text-gray-500 dark:text-gray-400">Method</div>
+                                  <div className="text-xs font-medium text-gray-800 dark:text-gray-200">{log.method}</div>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            {log.userAgent && (
+                              <div className="mt-3 pt-3 border-t border-gray-200/50 dark:border-gray-600/30">
+                                <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">User Agent</div>
+                                <div className="text-sm text-gray-700 dark:text-gray-300 break-all bg-gray-50 dark:bg-gray-700/30 p-2 rounded">
+                                  {log.userAgent}
+                                </div>
+                              </div>
+                            )}
+                            
+                            {log.referer && log.referer !== '-' && (
+                              <div className="mt-2">
+                                <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Referrer</div>
+                                <div className="text-sm text-gray-700 dark:text-gray-300 break-all bg-gray-50 dark:bg-gray-700/30 p-2 rounded">
+                                  {log.referer}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
-                        
-                        {log.referrer && (
-                          <div className="mt-2 pt-2 border-t border-gray-200/50 dark:border-gray-700/50">
-                            <div className="text-xs text-gray-500 dark:text-gray-400">Referrer:</div>
-                            <div className="text-xs font-mono text-gray-700 dark:text-gray-300 truncate">
-                              {log.referrer}
-                            </div>
-                          </div>
-                        )}
-                        
-                        {log.userAgent && (
-                          <div className="mt-2 pt-2 border-t border-gray-200/50 dark:border-gray-700/50">
-                            <div className="text-xs text-gray-500 dark:text-gray-400">User Agent:</div>
-                            <div className="text-xs text-gray-700 dark:text-gray-300 truncate">
-                              {log.userAgent}
-                            </div>
-                          </div>
-                        )}
                       </div>
                     ))}
                     {statusLogs.length > 50 && (
-                      <div className="text-center py-3 bg-gray-100/50 dark:bg-gray-700/30 rounded-lg">
-                        <p className="text-gray-600 dark:text-gray-300 text-sm">
-                          Showing first 50 of {statusLogs.length} logs
-                        </p>
+                      <div className="text-center py-4 bg-gray-100/50 dark:bg-gray-700/30 rounded-lg mt-2">
+                        <div className="inline-flex items-center gap-2 text-gray-600 dark:text-gray-300 text-sm">
+                          <AlertTriangle className="w-4 h-4" />
+                          <span>Showing first 50 of {statusLogs.length} logs</span>
+                        </div>
                       </div>
                     )}
                   </div>
                 ) : (
                   <div className="text-center py-16">
-                    <BarChart3 className="h-16 w-16 mx-auto text-gray-300 dark:text-gray-600 mb-4" />
-                    <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                      No logs found
+                    <div className="mx-auto w-24 h-24 bg-gray-100 dark:bg-gray-700/50 rounded-full flex items-center justify-center mb-6">
+                      <BarChart3 className="h-12 w-12 text-gray-400 dark:text-gray-500" />
+                    </div>
+                    <h4 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                      No Status Code Logs Found
                     </h4>
                     <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto">
-                      No logs were found for the {selectedStatus} status codes. This might indicate that no responses with these status codes were recorded during the monitoring period.
+                      No logs were found for the <span className="font-semibold text-gray-900 dark:text-white">{selectedStatus}</span> status codes. 
+                      This might indicate that no responses with these status codes were recorded during the monitoring period.
                     </p>
                   </div>
                 )}

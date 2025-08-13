@@ -96,16 +96,13 @@ export function TopSuspiciousIpsChart({ data, parsedLines, className = "" }: Top
 
   const formatDate = (dateString: string): string => {
     try {
-      const parts = dateString.replace(/\[|\]/g, "").split(':');
-      if (parts.length >= 3) {
-        const datePart = parts[0];
-        const timePart = parts.slice(1, 4).join(':');
-        const [day, month, year] = datePart.split('/');
-        const formattedDate = `${month} ${day} ${year} ${timePart}`;
-        const date = new Date(formattedDate);
-        if (!isNaN(date.getTime())) {
-          return date.toLocaleString();
-        }
+      // Nginx timestamp format: 11/Aug/2025:03:30:00 +0700
+      // Parse the timestamp properly
+      const match = dateString.match(/(\d{2})\/(\w{3})\/(\d{4}):(\d{2}):(\d{2}):(\d{2})/);
+      if (match) {
+        const [, day, month, year, hour, minute] = match;
+        // Return an even shorter format: "08/11 03:30"
+        return `${month}/${day} ${hour}:${minute}`;
       }
       return dateString;
     } catch (e) {
