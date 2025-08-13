@@ -43,11 +43,7 @@ export function Dashboard({ stats: initialLogData = null, parsedLines = [] }: Da
   };
 
   const filteredData = useMemo(() => {
-    //console.log('=== Dashboard: Filters changed ===', filters);
-    //console.log('Initial parsed lines count:', parsedLines.length);
-    
     if (Object.keys(filters).length === 0) {
-      //console.log('No filters, returning initial data');
       return initialLogData;
     }
 
@@ -68,14 +64,27 @@ export function Dashboard({ stats: initialLogData = null, parsedLines = [] }: Da
         if (key === 'method') {
           return line.method && line.method.toLowerCase() === value.toLowerCase();
         }
+        if (key === 'attackType') {
+          return line.attackType === value;
+        }
         return line[key] === value;
       });
     });
 
-    //console.log('Filtering with', filteredLines.length, 'lines after applying filters');
+    // Get the base data (either initial or previous filtered data)
+    const baseData = filters.attackType ? initialLogData : {};
+    
+    // Calculate new aggregated data
     const result = aggregateLogData(filteredLines, filters);
-    //console.log('Filtered data result - traffic data points:', result.trafficOverTime.filter(x => x.count > 0).length, 'out of', result.trafficOverTime.length);
-    //console.log('First few traffic data points:', result.trafficOverTime.filter(x => x.count > 0).slice(0, 3));
+    
+    // If we're filtering by attack type, preserve the attack distribution from initial data
+    if (filters.attackType && initialLogData?.attackDistribution) {
+      return {
+        ...result,
+        attackDistribution: initialLogData.attackDistribution
+      };
+    }
+    
     return result;
   }, [filters, parsedLines, JSON.stringify(initialLogData)]);
 
@@ -96,6 +105,14 @@ export function Dashboard({ stats: initialLogData = null, parsedLines = [] }: Da
       return initialLogData !== null && initialLogData.requestStats && initialLogData.requestStats.totalRequests > 0;
   }, [initialLogData]);
 
+
+  const allAttackTypes = useMemo(() => [
+    "SQL Injection",
+    "XSS",
+    "Command Injection",
+    "Directory Traversal",
+    "Brute Force",
+  ], []);
 
   if (!hasData) {
     return (
@@ -165,7 +182,12 @@ export function Dashboard({ stats: initialLogData = null, parsedLines = [] }: Da
             <StatusCodesChart data={statusCodes || {}} parsedLines={parsedLines} onFilter={handleSetFilter} activeFilter={filters?.status} />
         </motion.div>
         <motion.div className="md:col-span-1 lg:col-span-6" variants={itemVariants}>
-            <AttackDistributionChart data={attackDistribution || {}} onFilter={handleSetFilter} activeFilter={filters?.attackType} />
+            <AttackDistributionChart 
+              data={attackDistribution || {}} 
+              allAttackTypes={allAttackTypes}
+              onFilter={handleSetFilter} 
+              activeFilter={filters?.attackType} 
+            />
         </motion.div>
         <motion.div className="md:col-span-1 lg:col-span-6" variants={itemVariants}>
             <TopIpAddressesChart data={topIp || {}} suspiciousIps={suspiciousIps || {}} onFilter={handleSetFilter} activeFilter={filters?.ipAddress} />
