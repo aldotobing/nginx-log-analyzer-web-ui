@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { aggregateLogData } from '../lib/log-aggregator';
 import { Dashboard } from './Dashboard';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, XCircle } from 'lucide-react';
 
 // A more robust parser for common Nginx log formats.
 const parseLogLine = (line: string) => {
@@ -111,7 +111,10 @@ export interface LogData {
 }
 
 const MAX_RECONNECT_ATTEMPTS = 5;
-const RECONNECT_DELAY = 2000; // 2 seconds
+const BASE_RECONNECT_DELAY = 2000; // 2 seconds
+const MAX_RECONNECT_DELAY = 30000; // 30 seconds
+const PING_INTERVAL = 30000; // 30 seconds
+const PONG_TIMEOUT = 10000; // 10 seconds
 
 export function LiveDashboard({ wsUrl }: { wsUrl: string }) {
   const [logData, setLogData] = useState<LogData | null>(null);
@@ -121,108 +124,163 @@ export function LiveDashboard({ wsUrl }: { wsUrl: string }) {
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showWsUrl, setShowWsUrl] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'reconnecting'>('connecting');
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | undefined>();
+  const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pongTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastMessageTime = useRef<number>(Date.now());
+  const reconnectDelay = useRef(BASE_RECONNECT_DELAY);
+
+  const calculateReconnectDelay = (attempt: number) => {
+    return Math.min(BASE_RECONNECT_DELAY * Math.pow(2, attempt), MAX_RECONNECT_DELAY);
+  };
 
   const handleNewLogLine = useCallback((line: string) => {
     const parsedLog = parseLogLine(line);
     if (parsedLog) {
-      //console.log('New log line parsed:', parsedLog);
       setParsedLines(prevLines => {
-        const updatedLines = [parsedLog, ...prevLines].slice(0, 500);
+        // Keep all logs, just prepend the new one
+        const updatedLines = [parsedLog, ...prevLines];
         const aggregatedData = aggregateLogData(updatedLines);
-        // Create a new object reference to ensure proper re-rendering
-        const newData = {
-          ...aggregatedData,
-          // Preserve any existing data that might not be in the current aggregation
-          // But ensure we're creating a new object reference
-        };
-        //console.log('Updated log data:', newData);
-        setLogData(newData);
+        setLogData(aggregatedData);
         return updatedLines;
       });
     }
   }, []);
 
+  const setupPingPong = useCallback(() => {
+    if (pingIntervalRef.current) {
+      clearInterval(pingIntervalRef.current);
+    }
+    if (pongTimeoutRef.current) {
+      clearTimeout(pongTimeoutRef.current);
+    }
+
+    pingIntervalRef.current = setInterval(() => {
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        try {
+          wsRef.current.send(JSON.stringify({ type: 'ping' }));
+          
+          pongTimeoutRef.current = setTimeout(() => {
+            if (wsRef.current) {
+              console.warn('No pong received, closing connection');
+              wsRef.current.close(4000, 'Pong timeout');
+            }
+          }, PONG_TIMEOUT);
+        } catch (error) {
+          console.error('Error sending ping:', error);
+        }
+      }
+    }, PING_INTERVAL);
+  }, []);
+
   const connectWebSocket = useCallback(() => {
-    // Clear any existing reconnect timeout
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = undefined;
     }
 
     if (!wsUrl) {
+      setError('WebSocket URL is not configured');
       return;
     }
 
     try {
-      // Close existing connection if any
       if (wsRef.current) {
         wsRef.current.close();
       }
       
+      setConnectionStatus('connecting');
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
       ws.onopen = () => {
+        console.log('WebSocket connected');
         setIsConnected(true);
+        setConnectionStatus('connected');
         setError(null);
         setReconnectAttempts(0);
+        reconnectDelay.current = BASE_RECONNECT_DELAY;
+        lastMessageTime.current = Date.now();
+        setupPingPong();
       };
 
       ws.onmessage = (event) => {
         if (typeof event.data === 'string') {
-          handleNewLogLine(event.data);
-        }
-      };
-
-      ws.onclose = (event) => {
-        setIsConnected(false);
-        
-        // Only attempt to reconnect if the closure was unexpected
-        if (event.code !== 1000 && event.code !== 1005) {
-          if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS - 1) {
-            // Schedule a reconnection attempt
-            reconnectTimeoutRef.current = setTimeout(() => {
-              setReconnectAttempts(prev => prev + 1);
-            }, RECONNECT_DELAY);
-          } else {
-            setError(`Connection lost. Reached maximum reconnection attempts (${MAX_RECONNECT_ATTEMPTS}).`);
+          lastMessageTime.current = Date.now();
+          
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === 'pong') {
+              if (pongTimeoutRef.current) {
+                clearTimeout(pongTimeoutRef.current);
+                pongTimeoutRef.current = null;
+              }
+              return;
+            }
+          } catch (e) {
+            // Not a JSON message, treat as log line
+            handleNewLogLine(event.data);
           }
         }
       };
 
+      ws.onclose = (event) => {
+        console.log('WebSocket closed:', event.code, event.reason);
+        setIsConnected(false);
+        
+        // Clear any existing ping/pong timeouts
+        if (pingIntervalRef.current) {
+          clearInterval(pingIntervalRef.current);
+          pingIntervalRef.current = null;
+        }
+        
+        if (pongTimeoutRef.current) {
+          clearTimeout(pongTimeoutRef.current);
+          pongTimeoutRef.current = null;
+        }
+        
+        // Special handling for our forced reconnection
+        if (event.code === 4001) { // Our custom code for visibility change
+          console.log('Reconnecting after visibility change...');
+          connectWebSocket();
+          return;
+        }
+        
+        // Only attempt to reconnect if the closure was unexpected
+        if (event.code !== 1000 && event.code !== 1005) {
+          const nextAttempt = reconnectAttempts + 1;
+          if (nextAttempt < MAX_RECONNECT_ATTEMPTS) {
+            setConnectionStatus('reconnecting');
+            setReconnectAttempts(nextAttempt);
+            reconnectDelay.current = calculateReconnectDelay(nextAttempt);
+            
+            reconnectTimeoutRef.current = setTimeout(() => {
+              console.log(`Attempting to reconnect (${nextAttempt + 1}/${MAX_RECONNECT_ATTEMPTS})...`);
+              connectWebSocket();
+            }, reconnectDelay.current);
+            
+            setError(`Connection lost. Reconnecting in ${reconnectDelay.current / 1000} seconds... (Attempt ${nextAttempt + 1}/${MAX_RECONNECT_ATTEMPTS})`);
+          } else {
+            setConnectionStatus('disconnected');
+            setError(`Connection lost. Reached maximum reconnection attempts (${MAX_RECONNECT_ATTEMPTS}).`);
+          }
+        } else {
+          setConnectionStatus('disconnected');
+          setError('Connection closed');
+        }
+      };
+
       ws.onerror = (error) => {
-        setError('Connection error.');
+        console.error('WebSocket error:', error);
+        setError('Connection error occurred');
       };
     } catch (error) {
-      setError('Failed to create WebSocket connection.');
+      console.error('Failed to create WebSocket:', error);
+      setError('Failed to create WebSocket connection');
     }
-  }, [wsUrl, reconnectAttempts, handleNewLogLine]);
-
-  // Effect to handle connection and reconnection
-  useEffect(() => {
-    if (wsUrl) {
-      connectWebSocket();
-    }
-
-    // Cleanup function
-    return () => {
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-        reconnectTimeoutRef.current = undefined;
-      }
-      if (wsRef.current) {
-        wsRef.current.close();
-        wsRef.current = null;
-      }
-    };
-  }, [wsUrl, connectWebSocket]);
-
-  // Reset reconnection attempts when URL changes
-  useEffect(() => {
-    setReconnectAttempts(0);
-  }, [wsUrl]);
+  }, [wsUrl, reconnectAttempts, handleNewLogLine, setupPingPong]);
 
   // Update clock every second
   useEffect(() => {
@@ -235,16 +293,79 @@ export function LiveDashboard({ wsUrl }: { wsUrl: string }) {
     };
   }, []);
 
+  // Handle visibility changes and wake from sleep
+  const visibilityChangeTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (visibilityChangeTimeout.current) {
+        clearTimeout(visibilityChangeTimeout.current);
+      }
+
+      visibilityChangeTimeout.current = setTimeout(() => {
+        if (document.visibilityState === 'visible') {
+          console.log('Tab became visible, checking connection...');
+          
+          // Always force a reconnection when tab becomes visible
+          if (wsRef.current) {
+            console.log('Forcing WebSocket reconnection...');
+            // Close with a custom code that indicates we want to reconnect
+            wsRef.current.close(4001, 'Tab became visible');
+          } else {
+            connectWebSocket();
+          }
+        }
+      }, 1000); // 1 second debounce
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      if (visibilityChangeTimeout.current) {
+        clearTimeout(visibilityChangeTimeout.current);
+      }
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [connectWebSocket]);
+
+  // Initial connection
+  useEffect(() => {
+    connectWebSocket();
+    
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+      if (pingIntervalRef.current) {
+        clearInterval(pingIntervalRef.current);
+      }
+      if (pongTimeoutRef.current) {
+        clearTimeout(pongTimeoutRef.current);
+      }
+    };
+  }, [connectWebSocket]);
+
   return (
     <div className="space-y-4">
+      {/* Connection Status Header */}
       <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-2xl border border-gray-200/50 dark:border-gray-700/50 shadow-sm p-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           {/* Connection Status Card */}
           <div className="flex items-center space-x-3">
-            <div className={`w-3 h-3 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+            <div className={`w-3 h-3 rounded-full ${
+              connectionStatus === 'connected' ? 'bg-green-500 animate-pulse' : 
+              connectionStatus === 'connecting' ? 'bg-yellow-500' : 
+              connectionStatus === 'reconnecting' ? 'bg-orange-500 animate-pulse' : 
+              'bg-red-500'
+            }`}></div>
             <div className="min-w-0">
               <div className="text-base font-semibold text-gray-900 dark:text-white truncate">
-                {isConnected ? 'Live Connection' : 'Disconnected'}
+                {connectionStatus === 'connected' ? 'Live Connection' : 
+                 connectionStatus === 'connecting' ? 'Connecting...' : 
+                 connectionStatus === 'reconnecting' ? 'Reconnecting...' : 
+                 'Disconnected'}
               </div>
               {wsUrl && (
                 <div className="flex items-center space-x-2 mt-1">
@@ -266,9 +387,9 @@ export function LiveDashboard({ wsUrl }: { wsUrl: string }) {
                   </button>
                 </div>
               )}
-              {reconnectAttempts > 0 && !isConnected && (
+              {connectionStatus === 'reconnecting' && (
                 <div className="text-sm text-orange-500 dark:text-orange-400 mt-1">
-                  Attempt {reconnectAttempts}/{MAX_RECONNECT_ATTEMPTS}
+                  Attempt {reconnectAttempts + 1}/{MAX_RECONNECT_ATTEMPTS}
                 </div>
               )}
             </div>
@@ -295,16 +416,31 @@ export function LiveDashboard({ wsUrl }: { wsUrl: string }) {
           </div>
         </div>
       </div>
-      
+
       {error && (
-        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 rounded-lg">
-          <p>{error}</p>
+        <div className="bg-red-50 border-l-4 border-red-500 p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <XCircle className="h-5 w-5 text-red-500" />
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
+          </div>
         </div>
       )}
-
-      {logData && parsedLines.length > 0 && (
+      
+      {logData && parsedLines.length > 0 ? (
         <Dashboard stats={logData} parsedLines={parsedLines} />
+      ) : (
+        <div className="flex items-center justify-center h-64 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
+          <div className="text-center">
+            <p className="text-gray-500 dark:text-gray-400">Waiting for log data...</p>
+          </div>
+        </div>
       )}
     </div>
   );
 }
+
+export default LiveDashboard;
