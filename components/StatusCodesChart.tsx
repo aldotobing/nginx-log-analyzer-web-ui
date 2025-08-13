@@ -64,8 +64,8 @@ export function StatusCodesChart({ data, className = "", onFilter, activeFilter,
       onFilter('status', newFilterValue);
     }
     
-    // Show logs modal
-    if (parsedLines && parsedLines.length > 0) {
+    // Show logs modal only when applying a filter (not when clearing)
+    if (parsedLines && parsedLines.length > 0 && activeFilter !== status) {
       // Filter logs by status code category (1xx, 2xx, etc.)
       const filteredLogs = parsedLines.filter(log => {
         const statusCode = log.status?.toString();
@@ -83,10 +83,10 @@ export function StatusCodesChart({ data, className = "", onFilter, activeFilter,
 
   const closeModal = () => {
     setIsModalOpen(false);
-    // Reset filter when closing modal
-    if (onFilter && activeFilter !== null) {
-      onFilter('status', null);
-    }
+    // Do not reset filter when closing modal
+    // if (onFilter && activeFilter !== null) {
+    //   onFilter('status', null);
+    // }
   };
 
   const {
@@ -266,97 +266,120 @@ export function StatusCodesChart({ data, className = "", onFilter, activeFilter,
         </motion.div>
       </div>
       
+      {activeFilter && (
+        <div className="flex justify-center pt-4">
+          <button
+            onClick={() => {
+              if (onFilter) {
+                onFilter('status', null);
+              }
+            }}
+            className="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg transition-colors duration-200 text-sm font-medium flex items-center gap-2"
+          >
+            <X className="w-4 h-4" />
+            Clear Filter
+          </button>
+        </div>
+      )}
+      
       {/* Logs Modal */}
       <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/30 backdrop-blur-md z-50 flex items-center justify-center p-4">
             <motion.div 
-              className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-4xl w-full max-h-[80vh] flex flex-col"
-              initial={{ opacity: 0, scale: 0.9 }}
+              className="bg-white/90 dark:bg-gray-800/90 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[85vh] flex flex-col border border-white/20 dark:border-gray-700/50"
+              initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
             >
-              <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                  Logs for {selectedStatus} Status Codes
-                </h3>
-                <button 
+              <div className="flex justify-between items-center p-5 border-b border-gray-200/50 dark:border-gray-700/50">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                    {selectedStatus} Status Codes
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    {statusLogs.length} requests found
+                  </p>
+                </div>
+                <button
                   onClick={closeModal}
-                  className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  className="p-1 rounded-full hover:bg-gray-200/50 dark:hover:bg-gray-700/50 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
                 >
-                  <X className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+                  <X className="h-5 w-5" />
                 </button>
               </div>
               
-              <div className="overflow-auto flex-1 p-6">
+              <div className="flex-1 overflow-y-auto p-5">
                 {statusLogs.length > 0 ? (
                   <div className="space-y-4">
-                    <p className="text-gray-600 dark:text-gray-300">
-                      Showing {statusLogs.length} logs for {selectedStatus} status codes
-                    </p>
-                    <div className="space-y-3">
-                      {statusLogs.slice(0, 50).map((log, index) => (
-                        <div 
-                          key={index} 
-                          className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-lg font-mono text-sm overflow-x-auto"
-                        >
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className={`px-2 py-1 rounded text-xs font-medium ${
-                              log.status?.startsWith('2') 
-                                ? 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200' 
-                                : log.status?.startsWith('3') 
-                                ? 'bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200' 
-                                : log.status?.startsWith('4') 
-                                ? 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200' 
-                                : log.status?.startsWith('5') 
-                                ? 'bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-200' 
-                                : 'bg-gray-100 dark:bg-gray-600 text-gray-800 dark:text-gray-200'
-                            }`}>
-                              {log.status}
-                            </span>
-                            <span className="text-gray-500 dark:text-gray-400 text-xs">
-                              {log.timestamp}
-                            </span>
+                    {statusLogs.slice(0, 50).map((log, index) => (
+                      <div 
+                        key={index}
+                        className="bg-white/50 dark:bg-gray-800/50 p-4 rounded-lg border border-gray-200/50 dark:border-gray-700/50"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <div className="font-mono text-sm text-gray-900 dark:text-gray-100">
+                              {log.method} {log.path} {log.protocol}
+                            </div>
+                            <div className="mt-1 flex items-center space-x-4 text-xs text-gray-500 dark:text-gray-400">
+                              <span>Status: {log.status}</span>
+                              <span>Size: {log.size}</span>
+                              <span>IP: {log.ip}</span>
+                            </div>
                           </div>
-                          <div className="text-gray-800 dark:text-gray-200 break-all">
-                            {log.method} {log.path}
-                          </div>
-                          <div className="flex gap-4 mt-2 text-xs">
-                            <span className="text-gray-600 dark:text-gray-300">
-                              Size: <span className="font-medium">{log.bodyBytesSent}</span>
-                            </span>
-                            <span className="text-gray-600 dark:text-gray-300">
-                              IP: <span className="font-medium">{log.ipAddress}</span>
-                            </span>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                            {new Date(log.timestamp).toLocaleString()}
                           </div>
                         </div>
-                      ))}
-                      {statusLogs.length > 50 && (
-                        <p className="text-center text-gray-500 dark:text-gray-400 text-sm">
+                        
+                        {log.referrer && (
+                          <div className="mt-2 pt-2 border-t border-gray-200/50 dark:border-gray-700/50">
+                            <div className="text-xs text-gray-500 dark:text-gray-400">Referrer:</div>
+                            <div className="text-xs font-mono text-gray-700 dark:text-gray-300 truncate">
+                              {log.referrer}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {log.userAgent && (
+                          <div className="mt-2 pt-2 border-t border-gray-200/50 dark:border-gray-700/50">
+                            <div className="text-xs text-gray-500 dark:text-gray-400">User Agent:</div>
+                            <div className="text-xs text-gray-700 dark:text-gray-300 truncate">
+                              {log.userAgent}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    {statusLogs.length > 50 && (
+                      <div className="text-center py-3 bg-gray-100/50 dark:bg-gray-700/30 rounded-lg">
+                        <p className="text-gray-600 dark:text-gray-300 text-sm">
                           Showing first 50 of {statusLogs.length} logs
                         </p>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
-                  <div className="text-center py-12">
-                    <BarChart3 className="h-12 w-12 mx-auto text-gray-400 dark:text-gray-500 mb-4" />
-                    <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                  <div className="text-center py-16">
+                    <BarChart3 className="h-16 w-16 mx-auto text-gray-300 dark:text-gray-600 mb-4" />
+                    <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
                       No logs found
                     </h4>
-                    <p className="text-gray-500 dark:text-gray-400">
-                      No logs were found for the {selectedStatus} status codes.
+                    <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto">
+                      No logs were found for the {selectedStatus} status codes. This might indicate that no responses with these status codes were recorded during the monitoring period.
                     </p>
                   </div>
                 )}
               </div>
               
-              <div className="p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end">
+              <div className="p-5 border-t border-gray-200/50 dark:border-gray-700/50 flex justify-end">
                 <button
                   onClick={closeModal}
-                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors font-medium"
+                  className="px-6 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl transition-all duration-200 font-medium shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
                 >
-                  Close
+                  Done
                 </button>
               </div>
             </motion.div>

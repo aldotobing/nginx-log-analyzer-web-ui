@@ -144,6 +144,11 @@ export default function Home() {
                 placeholder="ws://your-server:8080" 
                 value={wsUrl}
                 onChange={(e) => setWsUrl(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && wsUrl) {
+                    handleConnectToSocket();
+                  }
+                }}
                 className="flex-grow"
               />
               <Button 
@@ -155,7 +160,16 @@ export default function Home() {
               </Button>
             </div>
             <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-              Use <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">ws://</code> (port 80) for unencrypted connections or <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">wss://</code> (port 443) for secure TLS/SSL connections. WSS requires a valid SSL certificate.
+              <p className="mb-1">Use the appropriate protocol for your connection:</p>
+              <ul className="list-disc list-inside space-y-1 ml-2">
+                <li>
+                  <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">ws://</code> (port 80) for unencrypted connections
+                </li>
+                <li>
+                  <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">wss://</code> (port 443) for secure TLS/SSL connections
+                </li>
+              </ul>
+              <p className="mt-1">Note: WSS requires a valid SSL certificate.</p>
             </div>
             <div className="flex items-start space-x-2 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg mt-2">
               <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />

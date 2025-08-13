@@ -116,21 +116,29 @@ const MAX_RECONNECT_DELAY = 30000; // 30 seconds
 const PING_INTERVAL = 30000; // 30 seconds
 const PONG_TIMEOUT = 10000; // 10 seconds
 
-export function LiveDashboard({ wsUrl }: { wsUrl: string }) {
+export function LiveDashboard({ wsUrl: initialWsUrl }: { wsUrl: string }) {
   const [logData, setLogData] = useState<LogData | null>(null);
   const [parsedLines, setParsedLines] = useState<any[]>([]);
   const [isConnected, setIsConnected] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<React.ReactNode | null>(null);
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [showWsUrl, setShowWsUrl] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected' | 'reconnecting'>('connecting');
+  const [wsUrl, setWsUrl] = useState(initialWsUrl);
+  const [newWsUrl, setNewWsUrl] = useState(initialWsUrl);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | undefined>();
   const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const pongTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastMessageTime = useRef<number>(Date.now());
   const reconnectDelay = useRef(BASE_RECONNECT_DELAY);
+
+  // Update wsUrl and newWsUrl when initialWsUrl changes
+  useEffect(() => {
+    setWsUrl(initialWsUrl);
+    setNewWsUrl(initialWsUrl);
+  }, [initialWsUrl]);
 
   const calculateReconnectDelay = (attempt: number) => {
     return Math.min(BASE_RECONNECT_DELAY * Math.pow(2, attempt), MAX_RECONNECT_DELAY);
@@ -175,14 +183,29 @@ export function LiveDashboard({ wsUrl }: { wsUrl: string }) {
     }, PING_INTERVAL);
   }, []);
 
-  const connectWebSocket = useCallback(() => {
+  const connectWebSocket = useCallback((url: string = wsUrl) => {
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = undefined;
     }
 
-    if (!wsUrl) {
-      setError('WebSocket URL is not configured');
+    if (!url) {
+      setError(
+        <div>
+          <p className="font-medium">WebSocket URL is not configured.</p>
+          <p className="mt-2 font-medium">Please:</p>
+          <ul className="list-disc list-inside mt-1 space-y-1">
+            <li>Enter a valid WebSocket URL in the input field</li>
+            <li>Ensure the URL starts with ws:// or wss://</li>
+            <li>Verify the server is accessible</li>
+          </ul>
+          <p className="mt-2 font-medium">Example URLs:</p>
+          <ul className="list-disc list-inside mt-1 space-y-1">
+            <li>ws://localhost:8080</li>
+            <li>wss://your-server.com/websocket</li>
+          </ul>
+        </div>
+      );
       return;
     }
 
@@ -192,11 +215,13 @@ export function LiveDashboard({ wsUrl }: { wsUrl: string }) {
       }
       
       setConnectionStatus('connecting');
-      const ws = new WebSocket(wsUrl);
+      const ws = new WebSocket(url);
       wsRef.current = ws;
 
       ws.onopen = () => {
         console.log('WebSocket connected');
+        // Check if component is still mounted before updating state
+        if (!wsRef.current) return;
         setIsConnected(true);
         setConnectionStatus('connected');
         setError(null);
@@ -204,9 +229,14 @@ export function LiveDashboard({ wsUrl }: { wsUrl: string }) {
         reconnectDelay.current = BASE_RECONNECT_DELAY;
         lastMessageTime.current = Date.now();
         setupPingPong();
+        // Update the wsUrl state to reflect the currently connected URL
+        setWsUrl(url);
       };
 
       ws.onmessage = (event) => {
+        // Check if component is still mounted before handling messages
+        if (!wsRef.current) return;
+        
         if (typeof event.data === 'string') {
           lastMessageTime.current = Date.now();
           
@@ -228,6 +258,9 @@ export function LiveDashboard({ wsUrl }: { wsUrl: string }) {
 
       ws.onclose = (event) => {
         console.log('WebSocket closed:', event.code, event.reason);
+        // Don't update state if component is unmounting
+        if (!wsRef.current) return;
+        
         setIsConnected(false);
         
         // Clear any existing ping/pong timeouts
@@ -261,20 +294,77 @@ export function LiveDashboard({ wsUrl }: { wsUrl: string }) {
               connectWebSocket();
             }, reconnectDelay.current);
             
-            setError(`Connection lost. Reconnecting in ${reconnectDelay.current / 1000} seconds... (Attempt ${nextAttempt + 1}/${MAX_RECONNECT_ATTEMPTS})`);
+            setError(
+              <div>
+                <p>Connection lost. Reconnecting in {reconnectDelay.current / 1000} seconds... (Attempt {nextAttempt + 1}/{MAX_RECONNECT_ATTEMPTS})</p>
+              </div>
+            );
           } else {
-            setConnectionStatus('disconnected');
-            setError(`Connection lost. Reached maximum reconnection attempts (${MAX_RECONNECT_ATTEMPTS}).`);
-          }
+          setConnectionStatus('disconnected');
+          setError(
+            <div>
+              <p className="font-medium">Connection lost. Reached maximum reconnection attempts ({MAX_RECONNECT_ATTEMPTS}).</p>
+              <p className="mt-2 font-medium">Please check:</p>
+              <ul className="list-disc list-inside mt-1 space-y-1">
+                <li>Your network connection</li>
+                <li>The WebSocket server URL is correct</li>
+                <li>The server is running and accessible</li>
+                <li>Firewall or proxy settings are not blocking the connection</li>
+              </ul>
+              <p className="mt-2 font-medium">You can try:</p>
+              <ul className="list-disc list-inside mt-1 space-y-1">
+                <li>Verifying the URL and connecting again</li>
+                <li>Checking your network connection</li>
+                <li>Contacting your system administrator if the issue persists</li>
+              </ul>
+            </div>
+          );
+        }
         } else {
           setConnectionStatus('disconnected');
-          setError('Connection closed');
+          setError(
+            <div>
+              <p className="font-medium">Connection closed by the server.</p>
+              <p className="mt-2 font-medium">Possible reasons:</p>
+              <ul className="list-disc list-inside mt-1 space-y-1">
+                <li>Server intentionally closed the connection</li>
+                <li>Network interruption</li>
+                <li>Server maintenance or restart</li>
+              </ul>
+              <p className="mt-2 font-medium">Please check:</p>
+              <ul className="list-disc list-inside mt-1 space-y-1">
+                <li>Your network connection</li>
+                <li>The WebSocket server status</li>
+                <li>Firewall or proxy settings</li>
+              </ul>
+              <p className="mt-2">You can try reconnecting or verifying the server status.</p>
+            </div>
+          );
         }
       };
 
       ws.onerror = (error) => {
+        // Check if component is still mounted before handling errors
+        if (!wsRef.current) return;
+        
         console.error('WebSocket error:', error);
-        setError('Connection error occurred');
+        setError(
+          <div>
+            <p className="font-medium">Connection error occurred.</p>
+            <p className="mt-2 font-medium">Please check:</p>
+            <ul className="list-disc list-inside mt-1 space-y-1">
+              <li>The WebSocket server URL is correct</li>
+              <li>The server is running and accessible</li>
+              <li>Your network connection is stable</li>
+            </ul>
+            <p className="mt-2 font-medium">You can try:</p>
+            <ul className="list-disc list-inside mt-1 space-y-1">
+              <li>Verifying the URL and connecting again</li>
+              <li>Checking your network connection</li>
+              <li>Contacting your system administrator if the issue persists</li>
+            </ul>
+          </div>
+        );
       };
     } catch (error) {
       console.error('Failed to create WebSocket:', error);
@@ -329,10 +419,18 @@ export function LiveDashboard({ wsUrl }: { wsUrl: string }) {
 
   // Initial connection
   useEffect(() => {
-    connectWebSocket();
+    // Reset log data when connecting to a new URL
+    setLogData(null);
+    setParsedLines([]);
+    connectWebSocket(wsUrl);
     
     return () => {
       if (wsRef.current) {
+        // Clear event handlers to prevent state updates after unmount
+        wsRef.current.onopen = null;
+        wsRef.current.onmessage = null;
+        wsRef.current.onerror = null;
+        wsRef.current.onclose = null;
         wsRef.current.close();
       }
       if (reconnectTimeoutRef.current) {
@@ -345,7 +443,7 @@ export function LiveDashboard({ wsUrl }: { wsUrl: string }) {
         clearTimeout(pongTimeoutRef.current);
       }
     };
-  }, [connectWebSocket]);
+  }, [connectWebSocket, wsUrl]);
 
   return (
     <div className="space-y-4">
@@ -395,26 +493,65 @@ export function LiveDashboard({ wsUrl }: { wsUrl: string }) {
             </div>
           </div>
           
-          {/* Clock Card */}
-          <div className="bg-gray-100/50 dark:bg-gray-700/50 rounded-xl px-3 py-2 min-w-[180px]">
-            <div className="text-center">
-              <div className="text-xs text-gray-500 dark:text-gray-400 font-medium tracking-wide">
-                {currentTime.toLocaleDateString(undefined, {
-                  weekday: 'short',
-                  month: 'short',
-                  day: 'numeric'
-                })}
-              </div>
-              <div className="text-lg font-bold text-gray-900 dark:text-white tracking-tight">
-                {currentTime.toLocaleTimeString([], {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  second: '2-digit'
-                })}
+          {/* Connection Controls */}
+          <div className="flex items-center space-x-2">
+            {connectionStatus === 'connected' || connectionStatus === 'connecting' || connectionStatus === 'reconnecting' ? (
+              <button
+                onClick={() => {
+                  if (wsRef.current) {
+                    wsRef.current.close(1000, 'User disconnected');
+                  }
+                }}
+                className="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white text-sm rounded-lg transition-colors duration-200 font-medium"
+              >
+                Disconnect
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  setWsUrl(newWsUrl);
+                  connectWebSocket(newWsUrl);
+                }}
+                className="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded-lg transition-colors duration-200 font-medium"
+              >
+                Connect
+              </button>
+            )}
+            
+            {/* Clock Card */}
+            <div className="bg-gray-100/50 dark:bg-gray-700/50 rounded-xl px-3 py-2 min-w-[180px]">
+              <div className="text-center">
+                <div className="text-xs text-gray-500 dark:text-gray-400 font-medium tracking-wide">
+                  {currentTime.toLocaleDateString(undefined, {
+                    weekday: 'short',
+                    month: 'short',
+                    day: 'numeric'
+                  })}
+                </div>
+                <div className="text-lg font-bold text-gray-900 dark:text-white tracking-tight">
+                  {currentTime.toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                  })}
+                </div>
               </div>
             </div>
           </div>
         </div>
+        
+        {/* URL Input when disconnected */}
+        {connectionStatus !== 'connected' && connectionStatus !== 'connecting' && connectionStatus !== 'reconnecting' && (
+          <div className="mt-3 flex flex-col sm:flex-row sm:items-center gap-2">
+            <input
+              type="text"
+              value={newWsUrl}
+              onChange={(e) => setNewWsUrl(e.target.value)}
+              placeholder="Enter WebSocket URL"
+              className="flex-1 px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+            />
+          </div>
+        )}
       </div>
 
       {error && (
@@ -424,7 +561,7 @@ export function LiveDashboard({ wsUrl }: { wsUrl: string }) {
               <XCircle className="h-5 w-5 text-red-500" />
             </div>
             <div className="ml-3">
-              <p className="text-sm text-red-700">{error}</p>
+              <div className="text-sm text-red-700 whitespace-pre-line">{error}</div>
             </div>
           </div>
         </div>
