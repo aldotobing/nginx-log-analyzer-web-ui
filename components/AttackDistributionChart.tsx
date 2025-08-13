@@ -30,15 +30,6 @@ export function AttackDistributionChart({
   activeFilter 
 }: AttackDistributionChartProps) {
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const [unfilteredData, setUnfilteredData] = useState(data);
-
-  useEffect(() => {
-    // When the filter is not active, it means we have the full dataset.
-    // We cache this data to use for calculations when a filter is applied.
-    if (!activeFilter) {
-      setUnfilteredData(data);
-    }
-  }, [data, activeFilter]);
 
   useEffect(() => {
     const updateMode = () => {
@@ -81,11 +72,6 @@ export function AttackDistributionChart({
       "Brute Force"
     ];
     
-    // Debug: Log the incoming data structure
-    console.log('All attack types:', allAttackTypes);
-    console.log('Current data keys:', Object.keys(data));
-    console.log('Current data values:', Object.values(data));
-    
     // When there's an active filter, the parent has set non-matching types to 0
     // We still want to show all categories to maintain the radar chart structure
     const displayData: Record<string, number> = {};
@@ -99,8 +85,7 @@ export function AttackDistributionChart({
     const actualTotal = Object.values(data).reduce((sum, value) => sum + (Number(value) || 0), 0);
     console.log('AttackDistributionChart - Total attacks:', actualTotal);
     
-    // If there's an active filter, we still want to show the chart with the filtered data
-    if ((!data || Object.keys(data).length === 0) && !activeFilter) {
+    if (!data || Object.keys(data).length === 0) {
       console.log('AttackDistributionChart - No data or zero total attacks');
       return { totalAttacks: 0, attackLabels: [], attackCounts: [], metrics: [] };
     }
@@ -158,99 +143,54 @@ export function AttackDistributionChart({
 
   console.log('AttackDistributionChart - Rendering with:', { attackLabels, attackCounts, activeFilter });
   
-  // Helper function to get attack descriptions
-  const getAttackDescription = (attackType: string) => {
-    const descriptions: { [key: string]: string } = {
-      'SQL Injection': 'Malicious SQL queries are inserted into an entry field for execution',
-      'XSS': 'Malicious scripts are injected into trusted websites',
-      'Command Injection': 'Attacker extends default functionality by executing arbitrary commands',
-      'Directory Traversal': 'Access to files and directories outside the web root folder',
-      'Brute Force': 'Trial and error method used to obtain user credentials'
-    };
-    return descriptions[attackType] || 'No description available';
-  };
-
-  // Helper function to get attack severity
-  const getAttackSeverity = (attackType: string) => {
-    const severities: { [key: string]: { level: string; color: string } } = {
-      'SQL Injection': { level: 'Critical', color: 'bg-red-500' },
-      'XSS': { level: 'High', color: 'bg-orange-500' },
-      'Command Injection': { level: 'Critical', color: 'bg-red-500' },
-      'Directory Traversal': { level: 'Medium', color: 'bg-yellow-500' },
-      'Brute Force': { level: 'Medium', color: 'bg-yellow-500' }
-    };
-    return severities[attackType] || { level: 'Unknown', color: 'bg-gray-500' };
-  };
-  
-  const chartData = useMemo(() => {
-    const baseBackgroundColor = isDarkMode 
-      ? 'rgba(255, 0, 0, 0.2)' 
-      : 'rgba(220, 38, 38, 0.15)';
-    
-    const baseBorderColor = isDarkMode 
-      ? 'rgba(255, 50, 50, 1)' 
-      : 'rgba(220, 38, 38, 1)';
-
-    return {
-      labels: attackLabels,
-      datasets: [
-        {
-          label: 'Attack Count',
-          data: attackCounts,
-          backgroundColor: attackLabels.map(label => 
-            activeFilter && label === activeFilter 
-              ? (isDarkMode ? 'rgba(255, 215, 0, 0.3)' : 'rgba(255, 215, 0, 0.2)')
-              : baseBackgroundColor
-          ),
-          borderColor: attackLabels.map(label => 
-            activeFilter && label === activeFilter 
-              ? 'rgba(255, 215, 0, 1)' 
-              : baseBorderColor
-          ),
-          borderWidth: attackLabels.map(label => 
-            activeFilter && label === activeFilter ? 4 : (isDarkMode ? 4 : 3)
-          ),
-          pointBackgroundColor: attackLabels.map(label => 
-            activeFilter && label === activeFilter 
-              ? 'rgba(255, 215, 0, 1)' 
-              : (isDarkMode ? 'rgba(255, 100, 100, 1)' : 'rgba(220, 38, 38, 1)')
-          ),
-          pointBorderColor: isDarkMode ? 'rgba(255, 200, 200, 1)' : '#fff',
-          pointHoverBackgroundColor: attackLabels.map(label => 
-            activeFilter && label === activeFilter 
-              ? 'rgba(255, 215, 0, 1)' 
-              : (isDarkMode ? 'rgba(255, 0, 0, 1)' : '#fff')
-          ),
-          pointHoverBorderColor: isDarkMode ? 'rgba(255, 255, 255, 1)' : 'rgba(220, 38, 38, 1)',
-          pointRadius: attackLabels.map(label => 
-            activeFilter && label === activeFilter 
-              ? (isDarkMode ? 10 : 9) 
-              : (isDarkMode ? 7 : 6)
-          ),
-          pointHoverRadius: attackLabels.map(label => 
-            activeFilter && label === activeFilter 
-              ? (isDarkMode ? 12 : 11) 
-              : (isDarkMode ? 9 : 8)
-          ),
-          pointStyle: 'circle',
-        },
-      ],
-    };
-  }, [attackLabels, attackCounts, isDarkMode, activeFilter]);
+  const chartData = useMemo(() => ({
+    labels: attackLabels,
+    datasets: [
+      {
+        label: 'Attack Count',
+        data: attackCounts,
+        backgroundColor: isDarkMode ? 'rgba(255, 0, 0, 0.2)' : 'rgba(220, 38, 38, 0.15)',
+        borderColor: isDarkMode ? 'rgba(255, 50, 50, 1)' : 'rgba(220, 38, 38, 1)',
+        borderWidth: isDarkMode ? 4 : 3,
+        pointBackgroundColor: attackLabels.map((label, index) => {
+          // Highlight the active filter with a different color
+          if (activeFilter && label === activeFilter) {
+            return isDarkMode ? 'rgba(255, 215, 0, 1)' : 'rgba(255, 215, 0, 1)'; // Gold color for active filter
+          }
+          return isDarkMode ? 'rgba(255, 100, 100, 1)' : 'rgba(220, 38, 38, 1)';
+        }),
+        pointBorderColor: isDarkMode ? 'rgba(255, 200, 200, 1)' : '#fff',
+        pointHoverBackgroundColor: attackLabels.map((label, index) => {
+          // Highlight the active filter with a different hover color
+          if (activeFilter && label === activeFilter) {
+            return isDarkMode ? 'rgba(255, 215, 0, 1)' : 'rgba(255, 215, 0, 1)'; // Gold color for active filter
+          }
+          return isDarkMode ? 'rgba(255, 0, 0, 1)' : '#fff';
+        }),
+        pointHoverBorderColor: isDarkMode ? 'rgba(255, 255, 255, 1)' : 'rgba(220, 38, 38, 1)',
+        pointRadius: attackLabels.map((label, index) => {
+          // Make the active filter point larger
+          if (activeFilter && label === activeFilter) {
+            return isDarkMode ? 9 : 8;
+          }
+          return isDarkMode ? 7 : 6;
+        }),
+        pointHoverRadius: attackLabels.map((label, index) => {
+          // Make the active filter point larger on hover
+          if (activeFilter && label === activeFilter) {
+            return isDarkMode ? 11 : 10;
+          }
+          return isDarkMode ? 9 : 8;
+        }),
+        // Add glow effect through shadow
+        pointStyle: 'circle',
+      },
+    ],
+  }), [attackLabels, attackCounts, isDarkMode, activeFilter]);
 
   const options: ChartOptions<"radar"> = {
     responsive: true,
     maintainAspectRatio: false,
-    animation: {
-      duration: 1200,
-      easing: 'easeOutQuart',
-      onProgress: () => {
-        // This ensures smooth animations when data changes
-      },
-      onComplete: () => {
-        // Animation complete callback
-      }
-    },
     onClick: (event: ChartEvent, elements: ActiveElement[], chart: ChartJS) => {
       if (elements.length > 0 && onFilter) {
         const elementIndex = elements[0].index;
@@ -264,6 +204,7 @@ export function AttackDistributionChart({
       const canvas = chart.canvas;
       canvas.style.cursor = elements.length > 0 ? 'pointer' : 'default';
     },
+    animation: { duration: 1200, easing: "easeOutQuart" },
     plugins: {
       legend: { display: false },
       tooltip: {
@@ -317,8 +258,11 @@ export function AttackDistributionChart({
     },
   };
 
-  // Always show the chart if there's an active filter, or if we have any data
-  const shouldShowChart = activeFilter || Object.values(data).some(val => val > 0) || totalAttacks > 0;
+  // Check if we have any non-zero values in the original data
+  const hasNoData = Object.values(data).every(val => val === 0 || val === undefined);
+  
+  // But if we have an active filter that exists in the data, we should show the chart
+  const shouldShowChart = !hasNoData || (activeFilter && data[activeFilter] > 0);
   
   if (!shouldShowChart) {
     return (
@@ -355,35 +299,6 @@ export function AttackDistributionChart({
     );
   }
 
-  // Get detailed information for the selected attack type
-  const selectedAttackDetails = useMemo(() => {
-    if (!activeFilter) return null;
-
-    // Use the cached unfiltered data to get the true count for the selected attack type.
-    const attackCount = unfilteredData[activeFilter] || 0;
-
-    // Calculate the total from the cached unfiltered data for accurate percentages.
-    const totalUnfilteredAttacks = Object.values(unfilteredData).reduce((sum, value) => sum + (Number(value) || 0), 0);
-
-    const percentage = totalUnfilteredAttacks > 0 ? ((attackCount / totalUnfilteredAttacks) * 100).toFixed(1) : '0';
-
-    console.log('Selected attack details:', {
-      activeFilter,
-      attackCount,
-      percentage,
-      dataKeys: Object.keys(unfilteredData),
-      values: Object.values(unfilteredData)
-    });
-
-    return {
-      name: activeFilter,
-      count: attackCount,
-      percentage,
-      description: getAttackDescription(activeFilter),
-      severity: getAttackSeverity(activeFilter)
-    };
-  }, [activeFilter, unfilteredData]);
-
   return (
     <div className={className}>
       <div className="p-6 pb-4 border-b border-gray-200/50 dark:border-gray-700/50">
@@ -393,54 +308,12 @@ export function AttackDistributionChart({
         </h2>
         <p className="text-gray-600 dark:text-gray-400 mt-1">
           {activeFilter 
-            ? `Showing details for "${activeFilter}" attack type`
-            : `Distribution of ${totalAttacks.toLocaleString()} threats. Click a point for details.`}
+            ? `Distribution of ${totalAttacks.toLocaleString()} threats. Showing filtered view for "${activeFilter}".` 
+            : `Distribution of ${totalAttacks.toLocaleString()} threats. Click a point to filter.`}
         </p>
       </div>
 
       <div className="p-6 space-y-6">
-        {activeFilter && selectedAttackDetails && (
-          <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg mb-6 border-l-4 border-blue-500">
-            <div className="flex justify-between items-start">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {selectedAttackDetails.name}
-                </h3>
-                <p className="text-gray-600 dark:text-gray-300 mt-1">
-                  {selectedAttackDetails.description}
-                </p>
-                <div className="mt-3 flex items-center space-x-4">
-                  <div className="flex items-center">
-                    <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Count:</span>
-                    <span className="ml-2 text-gray-900 dark:text-white font-semibold">
-                      {selectedAttackDetails.count.toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="flex items-center">
-                    <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Percentage:</span>
-                    <span className="ml-2 text-gray-900 dark:text-white font-semibold">
-                      {selectedAttackDetails.percentage}%
-                    </span>
-                  </div>
-                  <div className="flex items-center">
-                    <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Severity:</span>
-                    <span className={`ml-2 px-2 py-1 text-xs font-semibold rounded-full ${selectedAttackDetails.severity.color} text-white`}>
-                      {selectedAttackDetails.severity.level}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <button 
-                onClick={() => onFilter?.('attackType', null)}
-                className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
-                title="Clear selection"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-          </div>
-        )}
-
         <div className="h-[200px] sm:h-[250px] md:h-[300px] relative">
           <Radar key={isDarkMode ? "dark" : "light"} data={chartData} options={options} />
         </div>
